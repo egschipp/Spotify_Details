@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const emptyTracks: TrackSummary[] = [];
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const withBasePath = (path: string) =>
+  basePath ? `${basePath}${path}` : path;
 
 type TrackSummary = {
   id: string;
@@ -80,8 +83,8 @@ export default function HomePage() {
   async function loadStatus() {
     setErrorMessage(null);
     const [credRes, authRes] = await Promise.all([
-      fetch("/api/credentials/status"),
-      fetch("/api/spotify/auth/status")
+      fetch(withBasePath("/api/credentials/status")),
+      fetch(withBasePath("/api/spotify/auth/status"))
     ]);
     const credJson = await credRes.json();
     const authJson = await authRes.json();
@@ -111,10 +114,10 @@ export default function HomePage() {
         setPlaylistId("");
         return;
       }
-      setLoadingPlaylists(true);
+        setLoadingPlaylists(true);
       setErrorMessage(null);
       try {
-        const res = await fetch("/api/spotify/playlists");
+        const res = await fetch(withBasePath("/api/spotify/playlists"));
         const data = await res.json();
         if (!res.ok) {
           setErrorMessage(data.error ?? "Playlists ophalen mislukt.");
@@ -143,7 +146,7 @@ export default function HomePage() {
     const loadNowPlaying = async () => {
       setLoadingNowPlaying(true);
       try {
-        const res = await fetch("/api/spotify/now-playing");
+        const res = await fetch(withBasePath("/api/spotify/now-playing"));
         const data = await res.json();
         if (active && res.ok) {
           setNowPlaying(data);
@@ -173,7 +176,7 @@ export default function HomePage() {
   async function handleSaveCredentials() {
     setStatusMessage(null);
     setErrorMessage(null);
-    const res = await fetch("/api/credentials/save", {
+    const res = await fetch(withBasePath("/api/credentials/save"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientId, clientSecret })
@@ -191,7 +194,9 @@ export default function HomePage() {
   async function handleClearCredentials() {
     setStatusMessage(null);
     setErrorMessage(null);
-    const res = await fetch("/api/credentials/clear", { method: "POST" });
+    const res = await fetch(withBasePath("/api/credentials/clear"), {
+      method: "POST"
+    });
     if (!res.ok) {
       const data = await res.json();
       setErrorMessage(data.error ?? "Wissen mislukt.");
@@ -206,7 +211,7 @@ export default function HomePage() {
   function handleLogin() {
     setStatusMessage(null);
     setErrorMessage(null);
-    window.location.href = "/api/spotify/auth/start";
+    window.location.href = withBasePath("/api/spotify/auth/start");
   }
 
   async function handleFetchPlaylist() {
@@ -215,7 +220,7 @@ export default function HomePage() {
     setLoading(true);
     setTracks(emptyTracks);
     try {
-      const res = await fetch("/api/spotify/playlist", {
+      const res = await fetch(withBasePath("/api/spotify/playlist"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ playlistId })
@@ -240,7 +245,7 @@ export default function HomePage() {
     setLoadingLiked(true);
     setTracks(emptyTracks);
     try {
-      const res = await fetch("/api/spotify/liked", {
+      const res = await fetch(withBasePath("/api/spotify/liked"), {
         method: "POST"
       });
       const data = await res.json();

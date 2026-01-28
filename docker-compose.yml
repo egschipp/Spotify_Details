@@ -1,0 +1,21 @@
+services:
+  spotify-details:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_BASE_PATH: /spotify
+    image: spotify-details:latest
+    container_name: spotify-details
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BASE_PATH: /spotify
+      SPOTIFY_DATA_DIR: /app/data
+    env_file:
+      - .env
+    volumes:
+      - spotify_details_data:/app/data
+    ports:
+      - "3005:3000"
+
+volumes:
+  spotify_details_data:

@@ -42,6 +42,10 @@ type TrackDetail = {
   audioAnalysis: { available: boolean; reason?: string };
 };
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const withBasePath = (path: string) =>
+  basePath ? `${basePath}${path}` : path;
+
 function formatDuration(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -59,7 +63,9 @@ export default function TrackDetailPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/spotify/track?trackId=${trackId}`);
+        const res = await fetch(
+          withBasePath(`/api/spotify/track?trackId=${trackId}`)
+        );
         const data = await res.json();
         if (!res.ok) {
           setErrorMessage(data.error ?? "Ophalen mislukt.");
