@@ -4,6 +4,7 @@ type BrandHeaderProps = {
   title?: string;
   subtitle?: string;
   showNav?: boolean;
+  navVariant?: "full" | "minimal";
 };
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -12,7 +13,8 @@ const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
 export default function BrandHeader({
   title,
   subtitle,
-  showNav = true
+  showNav = true,
+  navVariant = "full"
 }: BrandHeaderProps) {
   return (
     <header className="flex flex-col gap-6">
@@ -38,7 +40,7 @@ export default function BrandHeader({
           </div>
         </div>
 
-        {showNav && (
+        {showNav && navVariant === "full" && (
           <nav className="flex flex-wrap gap-3">
             <Link
               href="/"
@@ -51,6 +53,12 @@ export default function BrandHeader({
               className="rounded-full border border-white/15 bg-black/40 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
             >
               Playlists
+            </Link>
+            <Link
+              href="/credentials"
+              className="rounded-full border border-white/15 bg-black/40 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Credentials
             </Link>
           </nav>
         )}

@@ -34,9 +34,6 @@ export default function CredentialsPage() {
     if (credJson.clientId && !clientId) {
       setClientId(credJson.clientId);
     }
-    if (authJson.authenticated) {
-      router.replace("/");
-    }
   }
 
   useEffect(() => {
@@ -85,14 +82,43 @@ export default function CredentialsPage() {
     window.location.href = withBasePath("/api/spotify/auth/start");
   }
 
+  async function handleLogout() {
+    setStatusMessage(null);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(withBasePath("/api/session/clear"), {
+        method: "POST"
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Uitloggen mislukt.");
+      }
+      setClientId("");
+      setClientSecret("");
+      setCredStatus({ hasCredentials: false });
+      setAuthStatus({ authenticated: false });
+      setStatusMessage("Je bent uitgelogd en alles is gewist.");
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <BrandHeader
           title="Spotify credentials"
           subtitle="Sla je Spotify Client ID/Secret op en log in om verder te gaan."
-          showNav={false}
         />
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => router.push("/")}
+            className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+          >
+            Ga naar details
+          </button>
+        </div>
 
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
@@ -155,6 +181,12 @@ export default function CredentialsPage() {
               className="rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
             >
               Inloggen met Spotify
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Uitloggen en wissen
             </button>
             <p className="text-xs text-white/50">
               Na inloggen worden tokens server-side bewaard. Geen tokens in de
