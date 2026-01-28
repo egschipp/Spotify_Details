@@ -9,6 +9,7 @@ type PlaylistRow = {
   images: { url: string; width: number; height: number }[];
   trackCount: number;
   owner: string;
+  spotifyUrl?: string | null;
 };
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -44,12 +45,14 @@ export default function PlaylistsPage() {
   }
 
   function exportCsv() {
-    const header = ["Folder", "Playlist", "Tracks", "Owner"];
+    const header = ["Folder", "Playlist", "Tracks", "Owner", "Cover Art", "External URL"];
     const rows = sortedPlaylists.map((playlist) => [
       "",
       playlist.name,
       String(playlist.trackCount),
-      playlist.owner
+      playlist.owner,
+      playlist.images?.[0]?.url ?? "",
+      playlist.spotifyUrl ?? ""
     ]);
     const csv = [header, ...rows]
       .map((row) =>
@@ -131,15 +134,29 @@ export default function PlaylistsPage() {
               <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                 <tr>
                   <th className="px-4 py-3">Folder</th>
+                  <th className="px-4 py-3">Cover</th>
                   <th className="px-4 py-3">Playlist</th>
                   <th className="px-4 py-3">Tracks</th>
                   <th className="px-4 py-3">Owner</th>
+                  <th className="px-4 py-3">External URL</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {sortedPlaylists.map((playlist) => (
                   <tr key={playlist.id} className="bg-black/30">
                     <td className="px-4 py-3 text-white/40">—</td>
+                    <td className="px-4 py-3">
+                      {playlist.images?.[0]?.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={playlist.images[0].url}
+                          alt={playlist.name}
+                          className="h-10 w-10 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-lg bg-steel/60" />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-white">{playlist.name}</td>
                     <td className="px-4 py-3 text-white/70">
                       {playlist.trackCount}
@@ -147,11 +164,25 @@ export default function PlaylistsPage() {
                     <td className="px-4 py-3 text-white/70">
                       {playlist.owner}
                     </td>
+                    <td className="px-4 py-3 text-white/70">
+                      {playlist.spotifyUrl ? (
+                        <a
+                          href={playlist.spotifyUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-tide hover:text-pulse"
+                        >
+                          Open
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {!loading && !sortedPlaylists.length && (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-white/50" colSpan={4}>
+                    <td className="px-4 py-6 text-sm text-white/50" colSpan={6}>
                       Geen playlists gevonden. Log in en probeer opnieuw.
                     </td>
                   </tr>

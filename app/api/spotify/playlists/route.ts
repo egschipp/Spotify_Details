@@ -8,6 +8,7 @@ type SpotifyPlaylistItem = {
   images: { url: string; width: number; height: number }[];
   tracks: { total: number };
   owner: { display_name?: string; id: string };
+  external_urls?: { spotify?: string };
 };
 
 type SpotifyPlaylistsResponse = {
@@ -51,7 +52,8 @@ export async function GET(req: NextRequest) {
         name: playlist.name,
         images: playlist.images,
         trackCount: playlist.tracks.total,
-        owner: playlist.owner.display_name ?? playlist.owner.id
+        owner: playlist.owner.display_name ?? playlist.owner.id,
+        spotifyUrl: playlist.external_urls?.spotify ?? null
       }))
     });
     attachSessionCookie(res, sessionId, isNew);
