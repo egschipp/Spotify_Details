@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
             name: track.name,
             artists: track.artists.map((artist) => artist.name)
           },
-          audioFeatures: audioFeaturesMap[track.id],
+          audioFeatures: audioFeaturesMap[track.id] ?? undefined,
           spotifyArtistGenres: spotifyGenres,
           webText: web.text
         });
