@@ -18,12 +18,12 @@ export default function BrandHeader({
     <header className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-transparent md:h-20 md:w-20">
+          <div className="flex h-[100px] w-[100px] items-center justify-center bg-transparent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={withBasePath("/brand-logo.png")}
               alt="Spotify Details"
-              className="h-16 w-16 object-contain md:h-20 md:w-20"
+              className="h-[100px] w-[100px] object-contain"
             />
           </div>
           <div className="space-y-1">
