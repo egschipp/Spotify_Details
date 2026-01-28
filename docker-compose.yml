@@ -16,6 +16,12 @@ services:
       - spotify_details_data:/app/data
     ports:
       - "3005:3000"
+    networks:
+      - web
 
 volumes:
   spotify_details_data:
+
+networks:
+  web:
+    external: true
