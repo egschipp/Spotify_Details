@@ -211,12 +211,30 @@ export default function HomePageClient() {
     }
   }
 
-  function exportPlaylistsCsv() {
-    const header = ["Playlist", "Tracks", "Owner"];
-    const rows = playlistOptions.map((playlist) => [
-      playlist.name,
-      String(playlist.trackCount),
-      playlist.owner
+  function exportTracksCsv() {
+    const header = [
+      "Track",
+      "Artists",
+      "Album",
+      "Genre",
+      "Subgenre",
+      "Confidence",
+      "Duration",
+      "Popularity",
+      "Explicit",
+      "Spotify URL"
+    ];
+    const rows = tracks.map((track) => [
+      track.name,
+      track.artists.map((artist) => artist.name).join(", "),
+      track.album.name,
+      track.genre,
+      track.subgenre,
+      track.confidence.toFixed(2),
+      formatDuration(track.durationMs),
+      String(track.popularity),
+      track.explicit ? "yes" : "no",
+      track.spotifyUrl ?? ""
     ]);
     const csv = [header, ...rows]
       .map((row) =>
@@ -230,7 +248,7 @@ export default function HomePageClient() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `spotify-playlists-${new Date()
+    anchor.download = `spotify-tracks-${new Date()
       .toISOString()
       .slice(0, 10)}.csv`;
     anchor.click();
@@ -408,11 +426,11 @@ export default function HomePageClient() {
                   Liked songs
                 </button>
                 <button
-                  onClick={exportPlaylistsCsv}
-                  disabled={!playlistOptions.length}
+                  onClick={exportTracksCsv}
+                  disabled={!tracks.length || loading || loadingLiked}
                   className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Export to CSV
+                  Export geselecteerde playlist
                 </button>
               </div>
             </div>
