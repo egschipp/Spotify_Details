@@ -80,10 +80,7 @@ export default function PlaylistsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <BrandHeader
-          title="Playlists overzicht"
-          subtitle="Folders worden niet geleverd door de Spotify API, daarom blijft die kolom leeg."
-        />
+        <BrandHeader subtitle="Folders worden niet geleverd door de Spotify API, daarom blijft die kolom leeg." />
 
         <div className="flex flex-wrap gap-3">
           <button

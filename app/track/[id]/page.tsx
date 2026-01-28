@@ -86,10 +86,7 @@ export default function TrackDetailPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <BrandHeader
-          title="Track details"
-          subtitle="Uitgebreide track-, album- en genredata."
-        />
+        <BrandHeader subtitle="Uitgebreide track-, album- en genredata." />
         <Link href="/" className="text-sm font-medium text-tide">
           Terug naar playlist
         </Link>

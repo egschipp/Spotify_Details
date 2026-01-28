@@ -29,11 +29,6 @@ export default function BrandHeader({
             />
           </div>
           <div className="space-y-1">
-            {title && (
-              <h1 className="font-display text-2xl font-semibold md:text-3xl">
-                {title}
-              </h1>
-            )}
             {subtitle && (
               <p className="text-sm text-white/60 md:text-base">{subtitle}</p>
             )}
@@ -41,7 +36,7 @@ export default function BrandHeader({
         </div>
 
         {showNav && navVariant === "full" && (
-          <nav className="flex flex-wrap gap-3">
+          <nav className="flex flex-wrap gap-3 md:justify-end">
             <Link
               href="/"
               className="rounded-full border border-white/15 bg-black/40 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"

@@ -106,10 +106,7 @@ export default function CredentialsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <BrandHeader
-          title="Spotify credentials"
-          subtitle="Sla je Spotify Client ID/Secret op en log in om verder te gaan."
-        />
+        <BrandHeader subtitle="Sla je Spotify Client ID/Secret op en log in om verder te gaan." />
 
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
