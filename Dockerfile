@@ -1,11 +1,13 @@
 FROM node:20-alpine AS deps
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV NPM_CONFIG_FUND=false
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV NPM_CONFIG_FUND=false
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
