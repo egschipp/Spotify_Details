@@ -31,7 +31,7 @@ jobs:
           ssh -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" <<'SSH'
           set -euo pipefail
           if [ ! -d "$DEPLOY_PATH/.git" ]; then
-            git clone git@github.com:egschipp/Spotify_Details.git "$DEPLOY_PATH"
+            git clone https://github.com/egschipp/Spotify_Details.git "$DEPLOY_PATH"
           fi
           cd "$DEPLOY_PATH"
           git checkout main
