@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import BrandHeader from "@/app/ui/BrandHeader";
 import { useRouter, useSearchParams } from "next/navigation";
+import BrandHeader from "@/app/ui/BrandHeader";
 
 const emptyTracks: TrackSummary[] = [];
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
