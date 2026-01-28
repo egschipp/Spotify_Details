@@ -81,7 +81,7 @@ export default function HomePageClient() {
     const authJson = await authRes.json();
     setAuthStatus(authJson);
     if (!authJson.authenticated) {
-      router.replace(withBasePath("/credentials"));
+      router.replace("/credentials");
     }
   }
 
@@ -93,7 +93,7 @@ export default function HomePageClient() {
     const authError = searchParams.get("authError");
     if (authError) {
       setErrorMessage(decodeURIComponent(authError));
-      router.replace(withBasePath("/"));
+      router.replace("/");
     }
   }, [searchParams, router]);
 
@@ -214,7 +214,17 @@ export default function HomePageClient() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <BrandHeader subtitle="Authenticeer veilig en bekijk metadata van openbare en privé playlists." />
+        <div className="flex flex-col gap-4">
+          <BrandHeader subtitle="Authenticeer veilig en bekijk metadata van openbare en privé playlists." />
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/credentials"
+              className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
+            >
+              Naar credentials
+            </Link>
+          </div>
+        </div>
 
         {!authStatus.authenticated && (
           <section className="rounded-3xl border border-white/10 bg-black/50 p-6 text-sm text-white/70">

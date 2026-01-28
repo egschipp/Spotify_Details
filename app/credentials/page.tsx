@@ -35,7 +35,7 @@ export default function CredentialsPage() {
       setClientId(credJson.clientId);
     }
     if (authJson.authenticated) {
-      router.replace(withBasePath("/"));
+      router.replace("/");
     }
   }
 
