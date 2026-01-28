@@ -16,7 +16,7 @@ let cacheLock: Promise<void> = Promise.resolve();
 
 async function withCacheLock<T>(task: () => Promise<T>): Promise<T> {
   const previous = cacheLock;
-  let release: () => void;
+  let release: (() => void) | undefined;
   cacheLock = new Promise((resolve) => {
     release = resolve;
   });
