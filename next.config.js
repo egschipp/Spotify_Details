@@ -8,9 +8,6 @@ const nextConfig = {
   output: "standalone",
   basePath,
   assetPrefix: basePath || undefined,
-  eslint: {
-    ignoreDuringBuilds: true
-  },
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath
   }
