@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
 import { getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
+import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 type SpotifyPlaylistItem = {
   id: string;
@@ -42,10 +43,21 @@ async function fetchAllPlaylists(accessToken: string) {
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const limit = rateLimit(`playlists:${sessionId}`, {
+    windowMs: 60_000,
+    max: 30
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again soon." },
+      { status: 429, headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
+  }
   try {
     const accessToken = await getValidAccessToken(sessionId);
     const playlists = await fetchAllPlaylists(accessToken);
-    const res = NextResponse.json({
+    const res = NextResponse.json(
+      {
       total: playlists.length,
       playlists: playlists.map((playlist) => ({
         id: playlist.id,
@@ -55,7 +67,9 @@ export async function GET(req: NextRequest) {
         owner: playlist.owner.display_name ?? playlist.owner.id,
         spotifyUrl: playlist.external_urls?.spotify ?? null
       }))
-    });
+      },
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {

@@ -5,6 +5,7 @@ import { parsePlaylistId } from "@/lib/spotify/parsePlaylistId";
 import { fetchWebText } from "@/lib/genres/webSources";
 import { classifyTrack } from "@/lib/genres/genreClassifier";
 import { mapWithConcurrency } from "@/lib/genres/concurrency";
+import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 type SpotifyPlaylistTrack = {
   track: {
@@ -124,6 +125,16 @@ async function fetchAudioFeatures(
 
 export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const limit = rateLimit(`playlist:${sessionId}`, {
+    windowMs: 60_000,
+    max: 10
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again soon." },
+      { status: 429, headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
+  }
   try {
     const body = (await req.json()) as {
       playlistUrl?: string;
@@ -218,11 +229,14 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    const res = NextResponse.json({
-      playlistId,
-      total: enrichedTracks.length,
-      tracks: enrichedTracks
-    });
+    const res = NextResponse.json(
+      {
+        playlistId,
+        total: enrichedTracks.length,
+        tracks: enrichedTracks
+      },
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {

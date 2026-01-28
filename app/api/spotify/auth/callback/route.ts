@@ -7,9 +7,20 @@ import {
   getAppBaseUrl,
   getRedirectUri
 } from "@/lib/spotify/spotifyClient";
+import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const limit = rateLimit(`auth-callback:${sessionId}`, {
+    windowMs: 60_000,
+    max: 10
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Try again soon." },
+      { status: 429, headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
+  }
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -22,7 +33,8 @@ export async function GET(req: NextRequest) {
       ? `${error}: ${errorDescription}`
       : error;
     const res = NextResponse.redirect(
-      new URL(`?authError=${encodeURIComponent(message)}`, appBaseUrl)
+      new URL(`?authError=${encodeURIComponent(message)}`, appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -30,7 +42,8 @@ export async function GET(req: NextRequest) {
 
   if (!code || !state) {
     const res = NextResponse.redirect(
-      new URL("?authError=Missing%20code%20or%20state.", appBaseUrl)
+      new URL("?authError=Missing%20code%20or%20state.", appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -39,14 +52,16 @@ export async function GET(req: NextRequest) {
   const session = await getSession(sessionId);
   if (!session.codeVerifier || !session.authState) {
     const res = NextResponse.redirect(
-      new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl)
+      new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   }
   if (session.authState !== state) {
     const res = NextResponse.redirect(
-      new URL("?authError=State%20mismatch.", appBaseUrl)
+      new URL("?authError=State%20mismatch.", appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -55,7 +70,8 @@ export async function GET(req: NextRequest) {
   const credentials = await getCredentials(sessionId);
   if (!credentials) {
     const res = NextResponse.redirect(
-      new URL("?authError=Missing%20Spotify%20credentials.", appBaseUrl)
+      new URL("?authError=Missing%20Spotify%20credentials.", appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -78,7 +94,9 @@ export async function GET(req: NextRequest) {
       codeVerifier: undefined,
       authState: undefined
     });
-    const res = NextResponse.redirect(new URL(".", appBaseUrl));
+    const res = NextResponse.redirect(new URL(".", appBaseUrl), {
+      headers: rateLimitHeaders(limit.remaining, limit.resetAt)
+    });
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {
