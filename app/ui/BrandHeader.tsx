@@ -2,7 +2,6 @@ import Link from "next/link";
 
 type BrandHeaderProps = {
   title?: string;
-  subtitle?: string;
   showNav?: boolean;
   navVariant?: "full" | "minimal";
 };
@@ -12,7 +11,6 @@ const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
 
 export default function BrandHeader({
   title,
-  subtitle,
   showNav = true,
   navVariant = "full"
 }: BrandHeaderProps) {
@@ -27,11 +25,6 @@ export default function BrandHeader({
               alt="Spotify Details"
               className="h-[250px] w-[250px] object-contain"
             />
-          </div>
-          <div className="space-y-1">
-            {subtitle && (
-              <p className="text-sm text-white/60 md:text-base">{subtitle}</p>
-            )}
           </div>
         </div>
 

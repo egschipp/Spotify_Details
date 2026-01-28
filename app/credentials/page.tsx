@@ -106,7 +106,55 @@ export default function CredentialsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-        <BrandHeader subtitle="Sla je Spotify Client ID/Secret op en log in om verder te gaan." />
+        <BrandHeader />
+
+        <section className="rounded-3xl border border-white/10 bg-black/40 p-6 text-sm text-white/70">
+          <h2 className="font-display text-xl font-semibold text-white">
+            Zo kom je aan je Spotify Client ID en Secret
+          </h2>
+          <ol className="mt-4 list-decimal space-y-2 pl-5">
+            <li>
+              Ga naar het Spotify Developer Dashboard en log in met je
+              Spotify‑account.
+            </li>
+            <li>
+              Klik op <span className="font-semibold">Create an app</span> en
+              vul een naam en beschrijving in.
+            </li>
+            <li>
+              Open je nieuwe app en kopieer de
+              <span className="font-semibold"> Client ID</span>.
+            </li>
+            <li>
+              Klik op <span className="font-semibold">Show client secret</span>
+              en kopieer de <span className="font-semibold">Client Secret</span>.
+            </li>
+          </ol>
+
+          <h3 className="mt-6 font-display text-lg font-semibold text-white">
+            Waarom moet ik nog een keer inloggen met Spotify?
+          </h3>
+          <p className="mt-2">
+            De Client ID en Secret horen bij jouw app. Daarna vraagt Spotify
+            nog om jouw persoonlijke toestemming om je playlists te mogen
+            lezen. Dat gebeurt via een aparte Spotify‑login. Zo houdt Spotify
+            controle over wie toegang krijgt.
+          </p>
+
+          <h3 className="mt-6 font-display text-lg font-semibold text-white">
+            Wat gebeurt er met mijn gegevens?
+          </h3>
+          <p className="mt-2">
+            Je Client Secret en tokens worden versleuteld opgeslagen op de
+            server. We gebruiken ze alleen om jouw Spotify‑gegevens op te halen.
+            Niets wordt gedeeld met derden.
+          </p>
+          <p className="mt-2">
+            Klik je op <span className="font-semibold">Uitloggen en wissen</span>,
+            dan verwijderen we je opgeslagen credentials, tokens én de
+            sessiecookie. Je moet dan opnieuw inloggen om de app te gebruiken.
+          </p>
+        </section>
 
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">

@@ -258,7 +258,7 @@ export default function HomePageClient() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <BrandHeader subtitle="Authenticeer veilig en bekijk metadata van openbare en privé playlists." />
+        <BrandHeader />
 
         {!authStatus.authenticated && (
           <section className="rounded-3xl border border-white/10 bg-black/50 p-6 text-sm text-white/70">
