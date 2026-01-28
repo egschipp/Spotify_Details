@@ -216,9 +216,6 @@ export default function HomePageClient() {
       "Track",
       "Artists",
       "Album",
-      "Genre",
-      "Subgenre",
-      "Confidence",
       "Duration",
       "Popularity",
       "Explicit",
@@ -228,9 +225,6 @@ export default function HomePageClient() {
       track.name,
       track.artists.map((artist) => artist.name).join(", "),
       track.album.name,
-      track.genre,
-      track.subgenre,
-      track.confidence.toFixed(2),
       formatDuration(track.durationMs),
       String(track.popularity),
       track.explicit ? "yes" : "no",
@@ -483,23 +477,20 @@ export default function HomePageClient() {
                     <th className="px-4 py-3">Spotify</th>
                     <th className="px-4 py-3">Artists</th>
                     <th className="px-4 py-3">Album</th>
-                    <th className="px-4 py-3">Genre</th>
-                    <th className="px-4 py-3">Subgenre</th>
-                    <th className="px-4 py-3">Confidence</th>
                     <th className="px-4 py-3">Duur</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
                         Playlist wordt geladen...
                       </td>
                     </tr>
                   )}
                   {!loading && tracks.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
                         Geen data. Log in en haal een playlist op.
                       </td>
                     </tr>
@@ -562,15 +553,6 @@ export default function HomePageClient() {
                         </td>
                         <td className="px-4 py-3 text-white/70">
                           {track.album.name}
-                        </td>
-                        <td className="px-4 py-3 text-white/70">
-                          {track.genre}
-                        </td>
-                        <td className="px-4 py-3 text-white/70">
-                          {track.subgenre}
-                        </td>
-                        <td className="px-4 py-3 text-white/60">
-                          {track.confidence.toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-white/60">
                           {formatDuration(track.durationMs)}
