@@ -267,20 +267,21 @@ export default function HomePageClient() {
           </section>
         )}
 
-        <section className="rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
-              <p className="text-sm text-white/60">
-                Live uit je Spotify player (ververst elke 3s).
-              </p>
+        <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-2">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
+                <p className="text-sm text-white/60">
+                  Live uit je Spotify player (ververst elke 3s).
+                </p>
+              </div>
+              {loadingNowPlaying && (
+                <span className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  laden...
+                </span>
+              )}
             </div>
-            {loadingNowPlaying && (
-              <span className="text-xs uppercase tracking-[0.2em] text-white/40">
-                laden...
-              </span>
-            )}
-          </div>
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/50 p-4">
             {!authStatus.authenticated && (
               <p className="text-sm text-white/60">
@@ -370,6 +371,26 @@ export default function HomePageClient() {
                 </div>
               </div>
             )}
+          </div>
+          </div>
+
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/50 p-5">
+            <div>
+              <h2 className="font-display text-2xl font-semibold">Over deze app</h2>
+              <p className="mt-2 text-sm text-white/60">
+                Met deze app bekijk je je Spotify playlists, track‑details,
+                genres en realtime “Now Playing” in één overzicht.
+              </p>
+            </div>
+            <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+              Versie
+            </div>
+            <p className="text-sm text-white/70">
+              {process.env.NEXT_PUBLIC_APP_VERSION}
+            </p>
+            <p className="pt-2 text-xs text-white/40">
+              © Schippers-Online.nl
+            </p>
           </div>
         </section>
 
