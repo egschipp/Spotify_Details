@@ -111,15 +111,6 @@ export default function CredentialsPage() {
           subtitle="Sla je Spotify Client ID/Secret op en log in om verder te gaan."
         />
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => router.push("/")}
-            className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
-          >
-            Home
-          </button>
-        </div>
-
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             <div className="space-y-2">

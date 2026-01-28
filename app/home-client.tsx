@@ -211,6 +211,32 @@ export default function HomePageClient() {
     }
   }
 
+  function exportPlaylistsCsv() {
+    const header = ["Playlist", "Tracks", "Owner"];
+    const rows = playlistOptions.map((playlist) => [
+      playlist.name,
+      String(playlist.trackCount),
+      playlist.owner
+    ]);
+    const csv = [header, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `\"${String(value).replace(/\"/g, '\"\"')}\"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `spotify-playlists-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -380,6 +406,13 @@ export default function HomePageClient() {
                   className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Liked songs
+                </button>
+                <button
+                  onClick={exportPlaylistsCsv}
+                  disabled={!playlistOptions.length}
+                  className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Export to CSV
                 </button>
               </div>
             </div>
