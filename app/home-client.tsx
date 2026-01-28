@@ -340,12 +340,6 @@ export default function HomePageClient() {
                   Kies uit je Spotify playlists (inclusief privé playlists).
                 </p>
               </div>
-              <Link
-                href="/playlists"
-                className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
-              >
-                Alle playlists
-              </Link>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
               <div className="flex-1">

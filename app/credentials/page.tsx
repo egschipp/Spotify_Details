@@ -116,7 +116,7 @@ export default function CredentialsPage() {
             onClick={() => router.push("/")}
             className="rounded-full border border-white/20 px-5 py-2 text-sm font-semibold text-white transition hover:border-white/40"
           >
-            Ga naar details
+            Home
           </button>
         </div>
 
