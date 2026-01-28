@@ -42,13 +42,18 @@ export async function getCredentials(
 export async function getCredentialStatus(sessionId: string): Promise<{
   hasCredentials: boolean;
   clientId?: string;
+  hasClientSecret?: boolean;
 }> {
   const credentials = await readJsonFile<CredentialMap>(FILE_NAME, {});
   const entry = credentials[sessionId];
   if (!entry) {
-    return { hasCredentials: false };
+    return { hasCredentials: false, hasClientSecret: false };
   }
-  return { hasCredentials: true, clientId: entry.clientId };
+  return {
+    hasCredentials: true,
+    clientId: entry.clientId,
+    hasClientSecret: Boolean(entry.secret)
+  };
 }
 
 export async function clearCredentials(sessionId: string): Promise<void> {

@@ -15,7 +15,8 @@ export default function CredentialsPage() {
   const [credStatus, setCredStatus] = useState<{
     hasCredentials: boolean;
     clientId?: string;
-  }>({ hasCredentials: false });
+    hasClientSecret?: boolean;
+  }>({ hasCredentials: false, hasClientSecret: false });
   const [authStatus, setAuthStatus] = useState<{ authenticated: boolean }>({
     authenticated: false
   });
@@ -205,6 +206,12 @@ export default function CredentialsPage() {
               <div className="mt-2 flex flex-col gap-2 text-sm text-white/80">
                 <span>
                   Credentials: {credStatus.hasCredentials ? "opgeslagen" : "ontbreekt"}
+                </span>
+                <span>
+                  Client ID: {credStatus.clientId ? "opgeslagen" : "ontbreekt"}
+                </span>
+                <span>
+                  Client Secret: {credStatus.hasClientSecret ? "opgeslagen" : "ontbreekt"}
                 </span>
                 <span>
                   Spotify auth: {authStatus.authenticated ? "ingelogd" : "niet ingelogd"}
