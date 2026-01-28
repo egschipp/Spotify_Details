@@ -6,6 +6,9 @@ type BrandHeaderProps = {
   showNav?: boolean;
 };
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
+
 export default function BrandHeader({
   title,
   subtitle,
@@ -18,7 +21,7 @@ export default function BrandHeader({
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/60 ring-1 ring-white/10">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/brand-logo.png"
+              src={withBasePath("/brand-logo.png")}
               alt="Spotify Details"
               className="h-12 w-12 object-contain"
             />
