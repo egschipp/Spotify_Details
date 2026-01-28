@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BrandHeader from "@/app/ui/BrandHeader";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const emptyTracks: TrackSummary[] = [];
@@ -263,20 +264,9 @@ export default function HomePageClient() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-10 md:px-10">
+    <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-        <header className="flex flex-col gap-3">
-          <p className="text-xs uppercase tracking-[0.4em] text-white/40">
-            Spotify Details
-          </p>
-          <h1 className="font-display text-4xl font-semibold leading-tight md:text-5xl">
-            Georgies Spotify Metadata
-          </h1>
-          <p className="max-w-2xl text-base text-white/70">
-            Authenticeer veilig en bekijk metadata van openbare en prive
-            playlists met uitgebreide trackmetadata.
-          </p>
-        </header>
+        <BrandHeader subtitle="Authenticeer veilig en bekijk metadata van openbare en privé playlists." />
 
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
@@ -348,7 +338,7 @@ export default function HomePageClient() {
         </section>
 
         <section className="rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
               <p className="text-sm text-white/60">

@@ -9,10 +9,16 @@
 body {
   @apply bg-clay text-white font-body antialiased;
   min-height: 100vh;
-  background-image: radial-gradient(circle at top, rgba(29, 185, 84, 0.25), transparent 45%),
-    linear-gradient(180deg, rgba(18, 18, 18, 1) 0%, rgba(10, 10, 10, 1) 100%);
+  background-image: radial-gradient(circle at 20% 0%, rgba(29, 185, 84, 0.25), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(70, 120, 255, 0.18), transparent 45%),
+    linear-gradient(180deg, rgba(12, 12, 12, 1) 0%, rgba(8, 8, 8, 1) 100%);
 }
 
 input, button, textarea {
   font: inherit;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
 }

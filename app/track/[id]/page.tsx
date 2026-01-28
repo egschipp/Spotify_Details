@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BrandHeader from "@/app/ui/BrandHeader";
 import { useParams } from "next/navigation";
 
 type TrackDetail = {
@@ -83,13 +84,15 @@ export default function TrackDetailPage() {
   }, [trackId]);
 
   return (
-    <main className="min-h-screen px-4 py-10 md:px-10">
+    <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="text-sm font-medium text-tide">
-            Terug naar playlist
-          </Link>
-        </div>
+        <BrandHeader
+          title="Track details"
+          subtitle="Uitgebreide track-, album- en genredata."
+        />
+        <Link href="/" className="text-sm font-medium text-tide">
+          Terug naar playlist
+        </Link>
 
         {loading && (
           <div className="rounded-3xl bg-mist/80 p-8 shadow-card">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import BrandHeader from "@/app/ui/BrandHeader";
 
 type PlaylistRow = {
   id: string;
@@ -78,40 +78,28 @@ export default function PlaylistsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen px-4 py-10 md:px-10">
+    <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-2">
-            <Link
-              href="/"
-              className="text-sm font-medium text-tide transition hover:text-pulse"
-            >
-              Terug naar home
-            </Link>
-            <h1 className="font-display text-3xl font-semibold">
-              Alle playlists
-            </h1>
-            <p className="text-sm text-white/60">
-              Folders worden niet geleverd door de Spotify API, daarom is de
-              folder-kolom leeg.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={exportCsv}
-              disabled={!sortedPlaylists.length}
-              className="rounded-full bg-tide px-6 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Export to CSV
-            </button>
-            <button
-              onClick={loadPlaylists}
-              disabled={loading}
-              className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Vernieuwen
-            </button>
-          </div>
+        <BrandHeader
+          title="Playlists overzicht"
+          subtitle="Folders worden niet geleverd door de Spotify API, daarom blijft die kolom leeg."
+        />
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={exportCsv}
+            disabled={!sortedPlaylists.length}
+            className="rounded-full bg-tide px-6 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Export to CSV
+          </button>
+          <button
+            onClick={loadPlaylists}
+            disabled={loading}
+            className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Vernieuwen
+          </button>
         </div>
 
         {errorMessage && (

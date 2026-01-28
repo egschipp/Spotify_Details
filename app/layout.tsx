@@ -14,8 +14,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Georgies Spotify Meta Data",
-  description: "Inspect playlist metadata with private Spotify access."
+  title: "Spotify Details",
+  description: "Spotify playlist inzichten en metadata."
 };
 
 export default function RootLayout({
