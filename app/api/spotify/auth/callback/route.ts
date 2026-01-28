@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       ? `${error}: ${errorDescription}`
       : error;
     const res = NextResponse.redirect(
-      new URL(`/?authError=${encodeURIComponent(message)}`, appBaseUrl)
+      new URL(`?authError=${encodeURIComponent(message)}`, appBaseUrl)
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   if (!code || !state) {
     const res = NextResponse.redirect(
-      new URL("/?authError=Missing%20code%20or%20state.", appBaseUrl)
+      new URL("?authError=Missing%20code%20or%20state.", appBaseUrl)
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -39,14 +39,14 @@ export async function GET(req: NextRequest) {
   const session = await getSession(sessionId);
   if (!session.codeVerifier || !session.authState) {
     const res = NextResponse.redirect(
-      new URL("/?authError=Auth%20session%20not%20initialized.", appBaseUrl)
+      new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl)
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   }
   if (session.authState !== state) {
     const res = NextResponse.redirect(
-      new URL("/?authError=State%20mismatch.", appBaseUrl)
+      new URL("?authError=State%20mismatch.", appBaseUrl)
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const credentials = await getCredentials(sessionId);
   if (!credentials) {
     const res = NextResponse.redirect(
-      new URL("/?authError=Missing%20Spotify%20credentials.", appBaseUrl)
+      new URL("?authError=Missing%20Spotify%20credentials.", appBaseUrl)
     );
     attachSessionCookie(res, sessionId, isNew);
     return res;
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       codeVerifier: undefined,
       authState: undefined
     });
-    const res = NextResponse.redirect(new URL("/", appBaseUrl));
+    const res = NextResponse.redirect(new URL(".", appBaseUrl));
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {

@@ -186,13 +186,31 @@ export async function spotifyFetch(
 }
 
 export function getRedirectUri(requestUrl: string): string {
-  const base = process.env.SPOTIFY_REDIRECT_BASE;
-  if (base) {
-    return new URL("/api/spotify/auth/callback", base).toString();
-  }
-  return new URL("/api/spotify/auth/callback", requestUrl).toString();
+  const baseUrl = getBaseUrl(requestUrl);
+  return new URL("api/spotify/auth/callback", baseUrl).toString();
 }
 
 export function getAppBaseUrl(requestUrl: string): string {
-  return process.env.SPOTIFY_REDIRECT_BASE ?? new URL(requestUrl).origin;
+  return getBaseUrl(requestUrl).toString();
+}
+
+function getBaseUrl(requestUrl: string): URL {
+  const envBase = process.env.SPOTIFY_REDIRECT_BASE;
+  if (envBase) {
+    const url = new URL(envBase);
+    url.pathname = ensureTrailingSlash(url.pathname || "/");
+    url.search = "";
+    url.hash = "";
+    return url;
+  }
+  const url = new URL(requestUrl);
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  url.pathname = ensureTrailingSlash(basePath || "/");
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+function ensureTrailingSlash(pathname: string) {
+  return pathname.endsWith("/") ? pathname : `${pathname}/`;
 }
