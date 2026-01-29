@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BrandHeader from "@/app/ui/BrandHeader";
 
 type PlaylistRow = {
@@ -17,14 +17,35 @@ const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
 
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
+  const [selectedPlaylistIds, setSelectedPlaylistIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const sortedPlaylists = useMemo(() => {
     return [...playlists].sort((a, b) =>
       a.name.localeCompare(b.name, "nl", { sensitivity: "base" })
     );
   }, [playlists]);
+  const selectedCount = useMemo(
+    () => selectedPlaylistIds.size,
+    [selectedPlaylistIds]
+  );
+  const allSelected = useMemo(
+    () =>
+      sortedPlaylists.length > 0 &&
+      selectedPlaylistIds.size === sortedPlaylists.length,
+    [sortedPlaylists.length, selectedPlaylistIds]
+  );
+  const isIndeterminate = useMemo(
+    () =>
+      sortedPlaylists.length > 0 &&
+      selectedPlaylistIds.size > 0 &&
+      selectedPlaylistIds.size < sortedPlaylists.length,
+    [sortedPlaylists.length, selectedPlaylistIds]
+  );
 
   async function loadPlaylists() {
     setLoading(true);
@@ -37,6 +58,7 @@ export default function PlaylistsPage() {
         return;
       }
       setPlaylists(data.playlists ?? []);
+      setSelectedPlaylistIds(new Set());
     } catch (error) {
       setErrorMessage((error as Error).message);
     } finally {
@@ -44,9 +66,12 @@ export default function PlaylistsPage() {
     }
   }
 
-  function exportCsv() {
+  function exportSelectedCsv() {
+    const selected = sortedPlaylists.filter((playlist) =>
+      selectedPlaylistIds.has(playlist.id)
+    );
     const header = ["Folder", "Playlist", "Tracks", "Owner", "Cover Art", "External URL"];
-    const rows = sortedPlaylists.map((playlist) => [
+    const rows = selected.map((playlist) => [
       "",
       playlist.name,
       String(playlist.trackCount),
@@ -77,6 +102,36 @@ export default function PlaylistsPage() {
     void loadPlaylists();
   }, []);
 
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
+
+  function togglePlaylistSelection(playlistId: string) {
+    setSelectedPlaylistIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(playlistId)) {
+        next.delete(playlistId);
+      } else {
+        next.add(playlistId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedPlaylistIds((prev) => {
+      if (sortedPlaylists.length === 0) {
+        return prev;
+      }
+      if (prev.size === sortedPlaylists.length) {
+        return new Set();
+      }
+      return new Set(sortedPlaylists.map((playlist) => playlist.id));
+    });
+  }
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
@@ -84,11 +139,11 @@ export default function PlaylistsPage() {
 
         <div className="flex flex-wrap gap-3">
           <button
-            onClick={exportCsv}
-            disabled={!sortedPlaylists.length}
+            onClick={exportSelectedCsv}
+            disabled={!selectedCount}
             className="rounded-full bg-tide px-6 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Export to CSV
+            Export selectie ({selectedCount})
           </button>
           <button
             onClick={loadPlaylists}
@@ -118,6 +173,20 @@ export default function PlaylistsPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                 <tr>
+                  <th className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        aria-label="Selecteer alle playlists"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        disabled={!sortedPlaylists.length}
+                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                      />
+                      <span>Selectie</span>
+                    </div>
+                  </th>
                   <th className="px-4 py-3">Folder</th>
                   <th className="px-4 py-3">Cover</th>
                   <th className="px-4 py-3">Playlist</th>
@@ -129,6 +198,15 @@ export default function PlaylistsPage() {
               <tbody className="divide-y divide-white/10">
                 {sortedPlaylists.map((playlist) => (
                   <tr key={playlist.id} className="bg-black/30">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecteer ${playlist.name}`}
+                        checked={selectedPlaylistIds.has(playlist.id)}
+                        onChange={() => togglePlaylistSelection(playlist.id)}
+                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                      />
+                    </td>
                     <td className="px-4 py-3 text-white/40">—</td>
                     <td className="px-4 py-3">
                       {playlist.images?.[0]?.url ? (
@@ -167,7 +245,7 @@ export default function PlaylistsPage() {
                 ))}
                 {!loading && !sortedPlaylists.length && (
                   <tr>
-                    <td className="px-4 py-6 text-sm text-white/50" colSpan={6}>
+                    <td className="px-4 py-6 text-sm text-white/50" colSpan={7}>
                       Geen playlists gevonden. Log in en probeer opnieuw.
                     </td>
                   </tr>
