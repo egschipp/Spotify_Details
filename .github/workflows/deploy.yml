@@ -114,6 +114,8 @@ jobs:
 
             PREV_IMAGE_ID=$(docker inspect --format='{{.Image}}' "$SERVICE" 2>/dev/null || true)
             export IMAGE_TAG="sha-${{ github.sha }}"
+            docker run --rm -v spotify_details_data:/app/data alpine:3.19 \
+              sh -c "chown -R 10001:10001 /app/data"
             docker-compose pull
             docker-compose up -d --remove-orphans
 
