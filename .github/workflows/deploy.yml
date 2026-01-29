@@ -49,6 +49,8 @@ jobs:
           context: .
           push: true
           platforms: linux/arm64,linux/amd64
+          build-args: |
+            NEXT_PUBLIC_BASE_PATH=/spotify
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -87,12 +89,16 @@ jobs:
             docker-compose pull
             docker-compose up -d --remove-orphans
 
-            for i in $(seq 1 12); do
+            for i in $(seq 1 36); do
               STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$SERVICE" 2>/dev/null || echo "unknown")
               echo "Health status: $STATUS"
               if [ "$STATUS" = "healthy" ]; then
                 echo "Deploy OK"
                 exit 0
+              fi
+              if [ "$STATUS" = "unhealthy" ]; then
+                echo "Health status is unhealthy; failing early."
+                break
               fi
               sleep 5
             done
