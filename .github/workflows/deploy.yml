@@ -86,7 +86,7 @@ jobs:
         run: cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
 
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
         with:
           host: ${{ secrets.PI_HOST || secrets.DEPLOY_HOST }}
           username: ${{ secrets.PI_USER || secrets.DEPLOY_USER }}
