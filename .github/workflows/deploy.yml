@@ -57,9 +57,9 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.PI_HOST }}
-          username: ${{ secrets.PI_USER }}
-          key: ${{ secrets.PI_SSH_KEY }}
+          host: ${{ secrets.PI_HOST || secrets.DEPLOY_HOST }}
+          username: ${{ secrets.PI_USER || secrets.DEPLOY_USER }}
+          key: ${{ secrets.PI_SSH_KEY || secrets.DEPLOY_KEY }}
           script: |
             set -euo pipefail
 
