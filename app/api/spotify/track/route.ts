@@ -13,6 +13,14 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
+  // Validate trackId to prevent path and query manipulation.
+  // Spotify IDs are base62 (letters, digits) and typically up to 22 characters.
+  if (!/^[A-Za-z0-9]{1,64}$/.test(trackId)) {
+    return NextResponse.json(
+      { error: "Invalid trackId format." },
+      { status: 400 }
+    );
+  }
 
   try {
     const accessToken = await getValidAccessToken(sessionId);

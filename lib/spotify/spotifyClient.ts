@@ -178,6 +178,16 @@ export async function spotifyFetch(
   path: string,
   accessToken: string
 ): Promise<Response> {
+  // Restrict outgoing Spotify API requests to known-safe paths.
+  if (!path.startsWith("/")) {
+    throw new Error("Invalid Spotify API path.");
+  }
+  const allowedPrefixes = ["/tracks", "/artists", "/albums", "/audio-features"];
+  const isAllowed = allowedPrefixes.some((prefix) => path.startsWith(prefix));
+  if (!isAllowed) {
+    throw new Error("Disallowed Spotify API endpoint.");
+  }
+
   return fetch(`${SPOTIFY_API_BASE}${path}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`

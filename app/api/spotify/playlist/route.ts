@@ -106,6 +106,11 @@ async function fetchAudioFeatures(
   const batchSize = 100;
   for (let i = 0; i < trackIds.length; i += batchSize) {
     const batch = trackIds.slice(i, i + batchSize);
+    // Validate track IDs before constructing the query string.
+    const validId = /^[A-Za-z0-9]{1,64}$/;
+    if (!batch.every((id) => validId.test(id))) {
+      throw new Error("Invalid track ID format in audio-features request.");
+    }
     const response = await spotifyFetch(
       `/audio-features?ids=${batch.join(",")}`,
       accessToken
@@ -148,6 +153,13 @@ export async function POST(req: NextRequest) {
     if (!playlistId) {
       return NextResponse.json(
         { error: "Invalid playlist URL or URI." },
+        { status: 400 }
+      );
+    }
+    // Validate playlistId to prevent path and query manipulation.
+    if (!/^[A-Za-z0-9]{1,64}$/.test(playlistId)) {
+      return NextResponse.json(
+        { error: "Invalid playlistId format." },
         { status: 400 }
       );
     }
