@@ -76,10 +76,7 @@ jobs:
               chmod 600 .env
             fi
 
-            if [ ! -f docker-compose.yml ]; then
-              echo "docker-compose.yml ontbreekt in $APP_DIR" >&2
-              exit 1
-            fi
+            curl -fsSL "https://raw.githubusercontent.com/egschipp/Spotify_Details/main/docker-compose.yml" -o docker-compose.yml
 
             if [ -n "${{ secrets.GHCR_TOKEN || '' }}" ]; then
               echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
