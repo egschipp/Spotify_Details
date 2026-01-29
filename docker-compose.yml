@@ -1,4 +1,15 @@
 services:
+  init-permissions:
+    image: alpine:3.19
+    container_name: spotify-details-init
+    command: ["sh", "-c", "chown -R 10001:10001 /app/data"]
+    user: "0:0"
+    volumes:
+      - spotify_details_data:/app/data
+    restart: "no"
+    networks:
+      - web
+
   spotify-details:
     image: ghcr.io/egschipp/spotify_details:${IMAGE_TAG:-latest}
     container_name: spotify-details
@@ -36,6 +47,9 @@ services:
       start_period: 30s
     networks:
       - web
+    depends_on:
+      init-permissions:
+        condition: service_completed_successfully
 
 volumes:
   spotify_details_data:
