@@ -65,7 +65,7 @@ export function getSessionId(req: NextRequest): {
   return { sessionId: crypto.randomUUID(), isNew: true };
 }
 
-function getCookieDomain(): string | undefined {
+export function getCookieDomain(): string | undefined {
   const explicit = process.env.SPOTIFY_COOKIE_DOMAIN;
   if (explicit) {
     return explicit;

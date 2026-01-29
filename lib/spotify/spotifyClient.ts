@@ -200,6 +200,15 @@ export function getAppBaseUrl(requestUrl: string): string {
   return getBaseUrl(requestUrl).toString();
 }
 
+export function getRedirectUriFromRequest(req: { url: string; headers: Headers }): string {
+  const baseUrl = getBaseUrlFromHeaders(req.url, req.headers);
+  return new URL("api/spotify/auth/callback", baseUrl).toString();
+}
+
+export function getAppBaseUrlFromRequest(req: { url: string; headers: Headers }): string {
+  return getBaseUrlFromHeaders(req.url, req.headers).toString();
+}
+
 function getBaseUrl(requestUrl: string): URL {
   const envBase = process.env.SPOTIFY_REDIRECT_BASE;
   if (envBase) {
@@ -211,6 +220,26 @@ function getBaseUrl(requestUrl: string): URL {
   }
   const url = new URL(requestUrl);
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  url.pathname = ensureTrailingSlash(basePath || "/");
+  url.search = "";
+  url.hash = "";
+  return url;
+}
+
+function getBaseUrlFromHeaders(requestUrl: string, headers: Headers): URL {
+  const envBase = process.env.SPOTIFY_REDIRECT_BASE;
+  if (envBase) {
+    const url = new URL(envBase);
+    url.pathname = ensureTrailingSlash(url.pathname || "/");
+    url.search = "";
+    url.hash = "";
+    return url;
+  }
+  const proto = headers.get("x-forwarded-proto") ?? "https";
+  const host =
+    headers.get("x-forwarded-host") ?? headers.get("host") ?? new URL(requestUrl).host;
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const url = new URL(`${proto}://${host}`);
   url.pathname = ensureTrailingSlash(basePath || "/");
   url.search = "";
   url.hash = "";

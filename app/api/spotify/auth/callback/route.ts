@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCredentials } from "@/lib/storage/credentialsStore";
-import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
-import { findSessionByAuthState, getSession, setSession } from "@/lib/storage/sessionStore";
+import { getCredentials, saveCredentials } from "@/lib/storage/credentialsStore";
+import {
+  attachSessionCookie,
+  getCookieDomain,
+  getSessionId
+} from "@/lib/storage/sessionCookie";
+import {
+  clearOAuthRecord,
+  findOAuthRecordByState,
+  getOAuthRecord
+} from "@/lib/storage/oauthStore";
+import { getSession, setSession } from "@/lib/storage/sessionStore";
 import {
   exchangeCodeForToken,
-  getAppBaseUrl,
-  getRedirectUri
+  getAppBaseUrlFromRequest,
+  getRedirectUriFromRequest
 } from "@/lib/spotify/spotifyClient";
 import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
+
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
@@ -26,7 +37,7 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get("state");
   const error = url.searchParams.get("error");
   const errorDescription = url.searchParams.get("error_description");
-  const appBaseUrl = getAppBaseUrl(req.url);
+  const appBaseUrl = getAppBaseUrlFromRequest(req);
 
   if (error) {
     const message = errorDescription
@@ -49,57 +60,79 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
-  const session = await getSession(sessionId);
-  let finalSessionId = sessionId;
-  let codeVerifier = session.codeVerifier;
-  let authState = session.authState;
-
-  if (!codeVerifier || !authState || authState !== state) {
-    const fallback = await findSessionByAuthState(state);
-    if (!fallback) {
-      const res = NextResponse.redirect(
-        new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl),
-        { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
-      );
-      attachSessionCookie(res, sessionId, isNew);
-      return res;
+  const oauthNonce = req.cookies.get("oauth_nonce")?.value;
+  let resolvedNonce = oauthNonce ?? null;
+  let oauthRecord = oauthNonce ? await getOAuthRecord(oauthNonce) : null;
+  if (!oauthRecord) {
+    const byState = await findOAuthRecordByState(state);
+    if (byState) {
+      oauthRecord = {
+        state,
+        codeVerifier: byState.codeVerifier,
+        clientId: byState.clientId,
+        clientSecret: byState.clientSecret
+      };
+      resolvedNonce = byState.nonce;
     }
-    finalSessionId = fallback.sessionId;
-    codeVerifier = fallback.codeVerifier;
-    authState = state;
+  }
+  if (!oauthRecord || oauthRecord.state !== state) {
+    const res = NextResponse.redirect(
+      new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl),
+      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+    );
+    attachSessionCookie(res, sessionId, isNew);
+    return res;
   }
 
-  const credentials = await getCredentials(finalSessionId);
+  const credentials =
+    (await getCredentials(sessionId)) ?? {
+      clientId: oauthRecord.clientId,
+      clientSecret: oauthRecord.clientSecret
+    };
   if (!credentials) {
     const res = NextResponse.redirect(
       new URL("?authError=Missing%20Spotify%20credentials.", appBaseUrl),
       { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
-    attachSessionCookie(res, finalSessionId, isNew || finalSessionId !== sessionId);
+    attachSessionCookie(res, sessionId, isNew);
     return res;
   }
 
   try {
-    const redirectUri = getRedirectUri(req.url);
+    const redirectUri = getRedirectUriFromRequest(req);
     const token = await exchangeCodeForToken({
       clientId: credentials.clientId,
       clientSecret: credentials.clientSecret,
       code,
       redirectUri,
-      codeVerifier
+      codeVerifier: oauthRecord.codeVerifier
     });
     const expiresAt = Date.now() + token.expires_in * 1000 - 30_000;
-    await setSession(finalSessionId, {
+    await setSession(sessionId, {
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
       expiresAt,
       codeVerifier: undefined,
       authState: undefined
     });
+    await saveCredentials(
+      sessionId,
+      credentials.clientId,
+      credentials.clientSecret
+    );
     const res = NextResponse.redirect(new URL(".", appBaseUrl), {
       headers: rateLimitHeaders(limit.remaining, limit.resetAt)
     });
-    attachSessionCookie(res, finalSessionId, isNew || finalSessionId !== sessionId);
+    if (resolvedNonce) {
+      const cookieDomain = getCookieDomain();
+      res.cookies.set("oauth_nonce", "", {
+        path: "/",
+        maxAge: 0,
+        ...(cookieDomain ? { domain: cookieDomain } : {})
+      });
+      await clearOAuthRecord(resolvedNonce);
+    }
+    attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {
     return NextResponse.json(
