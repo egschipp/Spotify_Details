@@ -69,7 +69,7 @@ jobs:
           SYFT_REGISTRY_AUTH_USERNAME: ${{ github.actor }}
           SYFT_REGISTRY_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
           artifact-name: sbom.spdx.json
       - name: Upload SBOM
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -97,7 +97,7 @@ jobs:
             APP_DIR="${{ env.APP_DIR }}"
             SERVICE="${{ env.SERVICE_NAME }}"
             IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-            SHA_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+            IMAGE_DIGEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
@@ -115,6 +115,8 @@ jobs:
 
             PREV_IMAGE_ID=$(docker inspect --format='{{.Image}}' "$SERVICE" 2>/dev/null || true)
             export IMAGE_TAG="sha-${{ github.sha }}"
+            export IMAGE_DIGEST
+            export IMAGE_REF="$IMAGE_DIGEST"
             docker-compose pull
             docker-compose up -d --remove-orphans
 
