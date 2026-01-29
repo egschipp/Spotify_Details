@@ -5,16 +5,30 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/spotify/playlist/route";
 import { saveCredentials } from "@/lib/storage/credentialsStore";
 import { setSession } from "@/lib/storage/sessionStore";
+import crypto from "crypto";
 
 const API_BASE = "https://api.spotify.com";
+const SIGNING_KEY =
+  process.env.SPOTIFY_SESSION_SIGNING_KEY ??
+  "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+process.env.SPOTIFY_SESSION_SIGNING_KEY ||= SIGNING_KEY;
+
+function signSessionId(sessionId: string) {
+  const hmac = crypto
+    .createHmac("sha256", Buffer.from(SIGNING_KEY, "hex"))
+    .update(sessionId)
+    .digest("base64url");
+  return `${sessionId}.${hmac}`;
+}
 
 function createRequest(body: object) {
+  const sessionId = "test-session";
   return new NextRequest("http://localhost/api/spotify/playlist", {
     method: "POST",
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
-      cookie: "spotify_details_sid=test-session"
+      cookie: `spotify_details_sid=${signSessionId(sessionId)}`
     }
   });
 }
