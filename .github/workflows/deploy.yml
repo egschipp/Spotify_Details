@@ -97,7 +97,6 @@ jobs:
             APP_DIR="${{ env.APP_DIR }}"
             SERVICE="${{ env.SERVICE_NAME }}"
             IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-            IMAGE_DIGEST="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
 
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
@@ -115,8 +114,6 @@ jobs:
 
             PREV_IMAGE_ID=$(docker inspect --format='{{.Image}}' "$SERVICE" 2>/dev/null || true)
             export IMAGE_TAG="sha-${{ github.sha }}"
-            export IMAGE_DIGEST
-            export IMAGE_REF="$IMAGE_DIGEST"
             docker-compose pull
             docker-compose up -d --remove-orphans
 
