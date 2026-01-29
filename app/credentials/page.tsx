@@ -136,7 +136,7 @@ export default function CredentialsPage() {
             Waarom moet ik nog een keer inloggen met Spotify?
           </h3>
           <p className="mt-2">
-            De Client ID en Secret horen bij jouw app. Daarna vraagt Spotify
+            De Client ID en Secret horen bij deze app. Daarna vraagt Spotify
             nog om jouw persoonlijke toestemming om je playlists te mogen
             lezen. Dat gebeurt via een aparte Spotify‑login. Zo houdt Spotify
             controle over wie toegang krijgt.
