@@ -1,0 +1,36 @@
+name: Trivy Scan (Scheduled)
+
+on:
+  schedule:
+    - cron: "30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: egschipp/spotify_details
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trivy scan (latest)
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8
+        continue-on-error: true
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: "sarif"
+          output: "trivy-results.sarif"
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@439137e1b50c27ba9e2f9befc93e43091b449c34
+        continue-on-error: true
+        if: ${{ hashFiles('trivy-results.sarif') != '' }}
+        with:
+          sarif_file: trivy-results.sarif
