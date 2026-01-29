@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandHeader from "@/app/ui/BrandHeader";
@@ -68,12 +68,31 @@ export default function HomePageClient() {
   } | null>(null);
   const [loadingNowPlaying, setLoadingNowPlaying] = useState(false);
   const [tracks, setTracks] = useState<TrackSummary[]>(emptyTracks);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(
+    () => new Set()
+  );
   const [loading, setLoading] = useState(false);
   const [loadingLiked, setLoadingLiked] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const trackCount = useMemo(() => tracks.length, [tracks.length]);
+  const selectedCount = useMemo(
+    () => selectedTrackIds.size,
+    [selectedTrackIds]
+  );
+  const allSelected = useMemo(
+    () => tracks.length > 0 && selectedTrackIds.size === tracks.length,
+    [tracks.length, selectedTrackIds]
+  );
+  const isIndeterminate = useMemo(
+    () =>
+      tracks.length > 0 &&
+      selectedTrackIds.size > 0 &&
+      selectedTrackIds.size < tracks.length,
+    [tracks.length, selectedTrackIds]
+  );
 
   async function loadStatus() {
     setErrorMessage(null);
@@ -168,6 +187,7 @@ export default function HomePageClient() {
     setErrorMessage(null);
     setLoading(true);
     setTracks(emptyTracks);
+    setSelectedTrackIds(new Set());
     try {
       const res = await fetch(withBasePath("/api/spotify/playlist"), {
         method: "POST",
@@ -180,6 +200,7 @@ export default function HomePageClient() {
         return;
       }
       setTracks(data.tracks ?? []);
+      setSelectedTrackIds(new Set());
       setStatusMessage(`Playlist geladen: ${data.total} tracks.`);
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -193,6 +214,7 @@ export default function HomePageClient() {
     setErrorMessage(null);
     setLoadingLiked(true);
     setTracks(emptyTracks);
+    setSelectedTrackIds(new Set());
     try {
       const res = await fetch(withBasePath("/api/spotify/liked"), {
         method: "POST"
@@ -203,6 +225,7 @@ export default function HomePageClient() {
         return;
       }
       setTracks(data.tracks ?? []);
+      setSelectedTrackIds(new Set());
       setStatusMessage(`Liked songs geladen: ${data.total} tracks.`);
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -211,7 +234,10 @@ export default function HomePageClient() {
     }
   }
 
-  function exportTracksCsv() {
+  function exportSelectedTracksCsv() {
+    const selectedTracks = tracks.filter((track) =>
+      selectedTrackIds.has(track.id)
+    );
     const header = [
       "Track",
       "Artists",
@@ -221,7 +247,7 @@ export default function HomePageClient() {
       "Explicit",
       "Spotify URL"
     ];
-    const rows = tracks.map((track) => [
+    const rows = selectedTracks.map((track) => [
       track.name,
       track.artists.map((artist) => artist.name).join(", "),
       track.album.name,
@@ -248,6 +274,36 @@ export default function HomePageClient() {
     anchor.click();
     URL.revokeObjectURL(url);
   }
+
+  function toggleTrackSelection(trackId: string) {
+    setSelectedTrackIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(trackId)) {
+        next.delete(trackId);
+      } else {
+        next.add(trackId);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedTrackIds((prev) => {
+      if (tracks.length === 0) {
+        return prev;
+      }
+      if (prev.size === tracks.length) {
+        return new Set();
+      }
+      return new Set(tracks.map((track) => track.id));
+    });
+  }
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = isIndeterminate;
+    }
+  }, [isIndeterminate]);
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
@@ -441,11 +497,13 @@ export default function HomePageClient() {
                   Liked songs
                 </button>
                 <button
-                  onClick={exportTracksCsv}
-                  disabled={!tracks.length || loading || loadingLiked}
+                  onClick={exportSelectedTracksCsv}
+                  disabled={
+                    !selectedCount || loading || loadingLiked || !tracks.length
+                  }
                   className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Export geselecteerde playlist
+                  Export geselecteerde playlist ({selectedCount})
                 </button>
               </div>
             </div>
@@ -472,6 +530,20 @@ export default function HomePageClient() {
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                   <tr>
+                    <th className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          aria-label="Selecteer alle tracks"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          disabled={!tracks.length}
+                          className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                        />
+                        <span>Selectie</span>
+                      </div>
+                    </th>
                     <th className="px-4 py-3">Cover</th>
                     <th className="px-4 py-3">Track</th>
                     <th className="px-4 py-3">Spotify</th>
@@ -483,14 +555,14 @@ export default function HomePageClient() {
                 <tbody>
                   {loading && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
                         Playlist wordt geladen...
                       </td>
                     </tr>
                   )}
                   {!loading && tracks.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
                         Geen data. Log in en haal een playlist op.
                       </td>
                     </tr>
@@ -501,6 +573,15 @@ export default function HomePageClient() {
                         key={track.id}
                         className="border-t border-white/5 hover:bg-white/5"
                       >
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            aria-label={`Selecteer ${track.name}`}
+                            checked={selectedTrackIds.has(track.id)}
+                            onChange={() => toggleTrackSelection(track.id)}
+                            className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                          />
+                        </td>
                         <td className="px-4 py-3">
                           <div className="h-12 w-12 overflow-hidden rounded-xl bg-steel">
                             {track.album.images?.[0] && (
