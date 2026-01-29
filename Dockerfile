@@ -21,8 +21,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+RUN addgroup -S app -g 10001 && adduser -S app -G app -u 10001
+COPY --chown=app:app --from=builder /app/public ./public
+COPY --chown=app:app --from=builder /app/.next/standalone ./
+COPY --chown=app:app --from=builder /app/.next/static ./.next/static
+USER app
 EXPOSE 3000
 CMD ["node", "server.js"]

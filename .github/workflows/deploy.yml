@@ -7,6 +7,8 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
+  security-events: write
 
 env:
   REGISTRY: ghcr.io
@@ -17,6 +19,9 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,6 +61,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          artifact-name: sbom.spdx.json
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: 30
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Cosign sign (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -86,6 +120,7 @@ jobs:
 
             PREV_IMAGE_ID=$(docker inspect --format='{{.Image}}' "$SERVICE" 2>/dev/null || true)
 
+            printf "services:\n  %s:\n    image: %s\n" "$SERVICE" "$SHA_TAG" > docker-compose.override.yml
             docker-compose pull
             docker-compose up -d --remove-orphans
 
