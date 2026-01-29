@@ -1,5 +1,5 @@
 import { getCredentials } from "../storage/credentialsStore";
-import { getSession, setSession } from "../storage/sessionStore";
+import { clearSession, getSession, setSession } from "../storage/sessionStore";
 
 const SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
@@ -160,11 +160,17 @@ export async function getValidAccessToken(sessionId: string) {
   if (!credentials) {
     throw new Error("Spotify credentials missing.");
   }
-  const refreshed = await refreshAccessToken({
-    clientId: credentials.clientId,
-    clientSecret: credentials.clientSecret,
-    refreshToken: session.refreshToken
-  });
+  let refreshed: Awaited<ReturnType<typeof refreshAccessToken>>;
+  try {
+    refreshed = await refreshAccessToken({
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      refreshToken: session.refreshToken
+    });
+  } catch {
+    await clearSession(sessionId);
+    throw new Error("Spotify auth required.");
+  }
   const expiresAt = Date.now() + refreshed.expires_in * 1000 - 30_000;
   await setSession(sessionId, {
     accessToken: refreshed.access_token,
