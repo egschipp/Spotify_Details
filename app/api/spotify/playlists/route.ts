@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
 import { getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
+import { clearSession } from "@/lib/storage/sessionStore";
 import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 type SpotifyPlaylistItem = {
@@ -74,12 +75,18 @@ export async function GET(req: NextRequest) {
     return res;
   } catch (error) {
     const message = (error as Error).message;
-    const status = message.includes("auth")
+    let status = message.includes("auth")
       ? 401
       : message.includes("credentials")
         ? 400
         : 500;
-    const res = NextResponse.json({ error: message }, { status });
+    let responseMessage = message;
+    if (message.includes("fetch failed (401)") || message.includes("fetch failed (403)")) {
+      status = 401;
+      responseMessage = "Spotify auth required.";
+      await clearSession(sessionId);
+    }
+    const res = NextResponse.json({ error: responseMessage }, { status });
     attachSessionCookie(res, sessionId, isNew);
     return res;
   }

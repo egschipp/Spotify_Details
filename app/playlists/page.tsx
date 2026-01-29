@@ -54,6 +54,10 @@ export default function PlaylistsPage() {
       const res = await fetch(withBasePath("/api/spotify/playlists"));
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = withBasePath("/credentials");
+          return;
+        }
         setErrorMessage(data.error ?? "Playlists ophalen mislukt.");
         return;
       }
