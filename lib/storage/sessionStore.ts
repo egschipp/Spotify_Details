@@ -62,6 +62,23 @@ export async function clearSession(sessionId: string): Promise<void> {
   await writeJsonFile(FILE_NAME, sessions);
 }
 
+export async function findSessionByAuthState(state: string): Promise<{
+  sessionId: string;
+  codeVerifier: string;
+} | null> {
+  const sessions = await readJsonFile<SessionMap>(FILE_NAME, {});
+  for (const [sessionId, stored] of Object.entries(sessions)) {
+    const authState = decryptMaybe(stored.authState);
+    if (authState === state) {
+      const codeVerifier = decryptMaybe(stored.codeVerifier);
+      if (codeVerifier) {
+        return { sessionId, codeVerifier };
+      }
+    }
+  }
+  return null;
+}
+
 function encryptMaybe(value?: string | EncryptedPayload) {
   if (!value) {
     return undefined;

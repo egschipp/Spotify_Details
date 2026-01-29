@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCredentials } from "@/lib/storage/credentialsStore";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
-import { getSession, setSession } from "@/lib/storage/sessionStore";
+import { findSessionByAuthState, getSession, setSession } from "@/lib/storage/sessionStore";
 import {
   exchangeCodeForToken,
   getAppBaseUrl,
@@ -50,30 +50,32 @@ export async function GET(req: NextRequest) {
   }
 
   const session = await getSession(sessionId);
-  if (!session.codeVerifier || !session.authState) {
-    const res = NextResponse.redirect(
-      new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl),
-      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
-    );
-    attachSessionCookie(res, sessionId, isNew);
-    return res;
-  }
-  if (session.authState !== state) {
-    const res = NextResponse.redirect(
-      new URL("?authError=State%20mismatch.", appBaseUrl),
-      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
-    );
-    attachSessionCookie(res, sessionId, isNew);
-    return res;
+  let finalSessionId = sessionId;
+  let codeVerifier = session.codeVerifier;
+  let authState = session.authState;
+
+  if (!codeVerifier || !authState || authState !== state) {
+    const fallback = await findSessionByAuthState(state);
+    if (!fallback) {
+      const res = NextResponse.redirect(
+        new URL("?authError=Auth%20session%20not%20initialized.", appBaseUrl),
+        { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
+      );
+      attachSessionCookie(res, sessionId, isNew);
+      return res;
+    }
+    finalSessionId = fallback.sessionId;
+    codeVerifier = fallback.codeVerifier;
+    authState = state;
   }
 
-  const credentials = await getCredentials(sessionId);
+  const credentials = await getCredentials(finalSessionId);
   if (!credentials) {
     const res = NextResponse.redirect(
       new URL("?authError=Missing%20Spotify%20credentials.", appBaseUrl),
       { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
     );
-    attachSessionCookie(res, sessionId, isNew);
+    attachSessionCookie(res, finalSessionId, isNew || finalSessionId !== sessionId);
     return res;
   }
 
@@ -84,10 +86,10 @@ export async function GET(req: NextRequest) {
       clientSecret: credentials.clientSecret,
       code,
       redirectUri,
-      codeVerifier: session.codeVerifier
+      codeVerifier
     });
     const expiresAt = Date.now() + token.expires_in * 1000 - 30_000;
-    await setSession(sessionId, {
+    await setSession(finalSessionId, {
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
       expiresAt,
@@ -97,7 +99,7 @@ export async function GET(req: NextRequest) {
     const res = NextResponse.redirect(new URL(".", appBaseUrl), {
       headers: rateLimitHeaders(limit.remaining, limit.resetAt)
     });
-    attachSessionCookie(res, sessionId, isNew);
+    attachSessionCookie(res, finalSessionId, isNew || finalSessionId !== sessionId);
     return res;
   } catch (error) {
     return NextResponse.json(
