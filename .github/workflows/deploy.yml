@@ -63,6 +63,10 @@ jobs:
 
       - name: Generate SBOM
         uses: anchore/sbom-action@deef08a0db64bfad603422135db61477b16cef56
+        continue-on-error: true
+        env:
+          SYFT_REGISTRY_AUTH_USERNAME: ${{ github.actor }}
+          SYFT_REGISTRY_AUTH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
           artifact-name: sbom.spdx.json
