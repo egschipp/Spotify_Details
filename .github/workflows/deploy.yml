@@ -102,11 +102,7 @@ jobs:
 
             echo "Healthcheck failed; attempting rollback..."
             if [ -n "$PREV_IMAGE_ID" ]; then
-              cat > docker-compose.override.yml <<EOF
-services:
-  $SERVICE:
-    image: $PREV_IMAGE_ID
-EOF
+              printf "services:\n  %s:\n    image: %s\n" "$SERVICE" "$PREV_IMAGE_ID" > docker-compose.override.yml
               docker-compose up -d --remove-orphans
               rm -f docker-compose.override.yml
               echo "Rollback attempted."
