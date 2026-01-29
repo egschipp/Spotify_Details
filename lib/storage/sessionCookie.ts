@@ -65,6 +65,27 @@ export function getSessionId(req: NextRequest): {
   return { sessionId: crypto.randomUUID(), isNew: true };
 }
 
+function getCookieDomain(): string | undefined {
+  const explicit = process.env.SPOTIFY_COOKIE_DOMAIN;
+  if (explicit) {
+    return explicit;
+  }
+  const base = process.env.SPOTIFY_REDIRECT_BASE;
+  if (!base) {
+    return undefined;
+  }
+  try {
+    const host = new URL(base).hostname;
+    const normalized = host.startsWith("www.") ? host.slice(4) : host;
+    if (!normalized.includes(".")) {
+      return normalized;
+    }
+    return `.${normalized}`;
+  } catch {
+    return undefined;
+  }
+}
+
 export function attachSessionCookie(
   res: NextResponse,
   sessionId: string,
@@ -75,6 +96,7 @@ export function attachSessionCookie(
   }
   const isProd = process.env.NODE_ENV === "production";
   const sameSite = isProd ? "none" : "lax";
+  const domain = getCookieDomain();
   res.cookies.set({
     name: COOKIE_NAME,
     value: signSessionId(sessionId),
@@ -82,6 +104,7 @@ export function attachSessionCookie(
     sameSite,
     secure: isProd,
     path: "/",
-    maxAge: MAX_AGE_SECONDS
+    maxAge: MAX_AGE_SECONDS,
+    ...(domain ? { domain } : {})
   });
 }
