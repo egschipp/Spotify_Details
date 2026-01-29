@@ -73,12 +73,14 @@ export function attachSessionCookie(
   if (!isNew) {
     return;
   }
+  const isProd = process.env.NODE_ENV === "production";
+  const sameSite = isProd ? "none" : "lax";
   res.cookies.set({
     name: COOKIE_NAME,
     value: signSessionId(sessionId),
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite,
+    secure: isProd,
     path: "/",
     maxAge: MAX_AGE_SECONDS
   });
