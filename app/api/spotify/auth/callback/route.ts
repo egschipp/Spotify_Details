@@ -5,7 +5,7 @@ import {
   attachSessionCookie,
   getCookieDomain,
   getSessionId,
-  setSessionCookie
+  setOAuthSessionCookie
 } from "@/lib/storage/sessionCookie";
 import {
   clearOAuthRecord,
@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
       });
       await clearOAuthRecord(resolvedNonce);
     }
-    setSessionCookie(res, sessionId);
+    setOAuthSessionCookie(res, sessionId);
     return res;
   } catch (error) {
     return NextResponse.json(

@@ -112,3 +112,17 @@ export function setSessionCookie(res: NextResponse, sessionId: string) {
     ...(domain ? { domain } : {})
   });
 }
+
+export function setOAuthSessionCookie(res: NextResponse, sessionId: string) {
+  const domain = getCookieDomain();
+  res.cookies.set({
+    name: COOKIE_NAME,
+    value: signSessionId(sessionId),
+    httpOnly: true,
+    sameSite: "none",
+    secure: true,
+    path: "/",
+    maxAge: MAX_AGE_SECONDS,
+    ...(domain ? { domain } : {})
+  });
+}

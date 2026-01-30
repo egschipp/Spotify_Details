@@ -85,7 +85,7 @@ export default function CredentialsPage() {
     setStatusMessage(null);
     setErrorMessage(null);
     window.location.href = withBasePath(
-      `/api/spotify/auth/start?returnTo=${encodeURIComponent(basePath || "/")}`
+      `/api/auth/spotify/login?returnTo=${encodeURIComponent(basePath || "/")}`
     );
   }
 

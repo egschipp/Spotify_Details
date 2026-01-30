@@ -193,7 +193,7 @@ export async function spotifyFetch(
 
 export function getRedirectUri(requestUrl: string): string {
   const baseUrl = getBaseUrl(requestUrl);
-  return new URL("api/spotify/auth/callback", baseUrl).toString();
+  return new URL("api/auth/spotify/callback", baseUrl).toString();
 }
 
 export function getAppBaseUrl(requestUrl: string): string {
@@ -202,7 +202,7 @@ export function getAppBaseUrl(requestUrl: string): string {
 
 export function getRedirectUriFromRequest(req: { url: string; headers: Headers }): string {
   const baseUrl = getBaseUrlFromHeaders(req.url, req.headers);
-  return new URL("api/spotify/auth/callback", baseUrl).toString();
+  return new URL("api/auth/spotify/callback", baseUrl).toString();
 }
 
 export function getAppBaseUrlFromRequest(req: { url: string; headers: Headers }): string {
