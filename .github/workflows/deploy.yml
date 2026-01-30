@@ -15,6 +15,7 @@ env:
   IMAGE_NAME: egschipp/spotify_details
   APP_DIR: /home/gh_deploy/spotify-details
   SERVICE_NAME: spotify-details
+  APP_VERSION: build-${{ github.run_number }}
 
 jobs:
   build-and-deploy:
@@ -57,6 +58,7 @@ jobs:
           platforms: linux/arm64,linux/amd64
           build-args: |
             NEXT_PUBLIC_BASE_PATH=/spotify
+            NEXT_PUBLIC_APP_VERSION=${{ env.APP_VERSION }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
