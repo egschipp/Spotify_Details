@@ -69,7 +69,7 @@ export default function TrackDetailPage() {
         );
         const data = await res.json();
         if (!res.ok) {
-          setErrorMessage(data.error ?? "Ophalen mislukt.");
+          setErrorMessage(data.error ?? "Fetch failed.");
           return;
         }
         setDetail(data);
@@ -91,12 +91,12 @@ export default function TrackDetailPage() {
           href="/"
           className="text-sm font-medium text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
         >
-          Terug naar playlist
+          Back to playlist
         </Link>
 
         {loading && (
           <div className="rounded-3xl bg-mist/80 p-8 shadow-card">
-            <p className="text-sm text-white/60">Track wordt geladen...</p>
+            <p className="text-sm text-white/60">Loading track...</p>
           </div>
         )}
 
@@ -133,8 +133,8 @@ export default function TrackDetailPage() {
                   <div className="flex flex-wrap gap-3 text-xs text-white/50">
                     <span>ID: {detail.track.id}</span>
                     <span>URI: {detail.track.uri}</span>
-                    <span>Duur: {formatDuration(detail.track.durationMs)}</span>
-                    <span>Populariteit: {detail.track.popularity}</span>
+                    <span>Duration: {formatDuration(detail.track.durationMs)}</span>
+                    <span>Popularity: {detail.track.popularity}</span>
                   </div>
                 </div>
                 {detail.track.spotifyUrl && (
@@ -158,12 +158,12 @@ export default function TrackDetailPage() {
 
             <section className="grid gap-4 rounded-3xl bg-mist/80 p-6 shadow-card md:grid-cols-2">
               <div>
-                <h2 className="font-display text-xl font-semibold">Basis</h2>
+                <h2 className="font-display text-xl font-semibold">Basics</h2>
                 <dl className="mt-3 space-y-2 text-sm text-white/70">
-                  <div>Explicit: {detail.track.explicit ? "Ja" : "Nee"}</div>
-                  <div>Is local: {detail.track.isLocal ? "Ja" : "Nee"}</div>
+                  <div>Explicit: {detail.track.explicit ? "Yes" : "No"}</div>
+                  <div>Is local: {detail.track.isLocal ? "Yes" : "No"}</div>
                   <div>
-                    Preview URL: {detail.track.previewUrl ?? "Niet beschikbaar"}
+                    Preview URL: {detail.track.previewUrl ?? "Not available"}
                   </div>
                 </dl>
               </div>
@@ -171,7 +171,7 @@ export default function TrackDetailPage() {
                 <h2 className="font-display text-xl font-semibold">External IDs</h2>
                 <dl className="mt-3 space-y-2 text-sm text-white/70">
                   {Object.keys(detail.track.externalIds).length === 0 && (
-                    <div>Geen external IDs</div>
+                    <div>No external IDs</div>
                   )}
                   {Object.entries(detail.track.externalIds).map(([key, value]) => (
                     <div key={key}>
@@ -185,19 +185,19 @@ export default function TrackDetailPage() {
             <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Genre</h2>
               <div className="mt-3 grid gap-2 text-sm text-white/70 md:grid-cols-2">
-                <div>Hoofdgenre: {detail.track.genre}</div>
+                <div>Primary genre: {detail.track.genre}</div>
                 <div>Subgenre: {detail.track.subgenre}</div>
                 <div>Confidence: {detail.track.confidence.toFixed(2)}</div>
                 <div>
-                  Bronnen:{" "}
+                  Sources:{" "}
                   {detail.track.genreSources.length
                     ? detail.track.genreSources.join(", ")
-                    : "Geen"}
+                    : "None"}
                 </div>
               </div>
               <div className="mt-4 text-sm text-white/60">
                 <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  Uitleg
+                  Explanation
                 </p>
                 <ul className="mt-2 space-y-1">
                   {detail.track.genreExplanation.length ? (
@@ -205,7 +205,7 @@ export default function TrackDetailPage() {
                       <li key={index}>{line}</li>
                     ))
                   ) : (
-                    <li>Geen duidelijke signalen.</li>
+                    <li>No clear signals.</li>
                   )}
                 </ul>
               </div>
@@ -219,7 +219,7 @@ export default function TrackDetailPage() {
                     <p className="font-medium">{artist.name}</p>
                     <p className="text-xs text-white/50">ID: {artist.id}</p>
                     <p className="text-xs text-white/50">
-                      Populariteit: {artist.popularity}
+                      Popularity: {artist.popularity}
                     </p>
                     <p className="text-xs text-white/50">
                       Followers: {artist.followers.total}
@@ -235,11 +235,11 @@ export default function TrackDetailPage() {
             <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Album</h2>
               <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
-                <div>Naam: {detail.album.name}</div>
+                <div>Name: {detail.album.name}</div>
                 <div>Release date: {detail.album.releaseDate}</div>
                 <div>Total tracks: {detail.album.totalTracks}</div>
-                <div>Label: {detail.album.label ?? "Onbekend"}</div>
-                <div>Markten: {detail.album.markets.length}</div>
+                <div>Label: {detail.album.label ?? "Unknown"}</div>
+                <div>Markets: {detail.album.markets.length}</div>
               </div>
             </section>
 
@@ -253,7 +253,7 @@ export default function TrackDetailPage() {
                     </div>
                   ))
                 ) : (
-                  <div>Audio features niet beschikbaar.</div>
+                  <div>Audio features not available.</div>
                 )}
               </div>
               <p className="mt-4 text-xs text-white/50">

@@ -59,12 +59,12 @@ export default function CredentialsPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setErrorMessage(data.error ?? "Opslaan mislukt.");
+      setErrorMessage(data.error ?? "Save failed.");
       return;
     }
     setClientSecret("");
     await loadStatus();
-    setStatusMessage("Credentials opgeslagen.");
+    setStatusMessage("Credentials saved.");
   }
 
   async function handleClearCredentials() {
@@ -75,7 +75,7 @@ export default function CredentialsPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setErrorMessage(data.error ?? "Wissen mislukt.");
+      setErrorMessage(data.error ?? "Clear failed.");
       return;
     }
     setClientId("");
@@ -101,13 +101,13 @@ export default function CredentialsPage() {
       });
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Uitloggen mislukt.");
+        throw new Error(data.error ?? "Logout failed.");
       }
       setClientId("");
       setClientSecret("");
       setCredStatus({ hasCredentials: false });
       setAuthStatus({ authenticated: false });
-      setStatusMessage("Je bent uitgelogd en alles is gewist.");
+      setStatusMessage("You have been logged out and everything has been cleared.");
     } catch (error) {
       setErrorMessage((error as Error).message);
     }
@@ -123,49 +123,48 @@ export default function CredentialsPage() {
 
         <section className="rounded-3xl border border-white/10 bg-black/40 p-6 text-sm text-white/70">
           <h2 className="font-display text-xl font-semibold text-white">
-            Zo kom je aan je Spotify Client ID en Secret
+            How to get your Spotify Client ID and Secret
           </h2>
           <ol className="mt-4 list-decimal space-y-2 pl-5">
             <li>
-              Ga naar het Spotify Developer Dashboard en log in met je
-              Spotify‑account.
+              Go to the Spotify Developer Dashboard and log in with your
+              Spotify account.
             </li>
             <li>
-              Klik op <span className="font-semibold">Create an app</span> en
-              vul een naam en beschrijving in.
+              Click <span className="font-semibold">Create an app</span> and
+              fill in a name and description.
             </li>
             <li>
-              Open je nieuwe app en kopieer de
+              Open your new app and copy the
               <span className="font-semibold"> Client ID</span>.
             </li>
             <li>
-              Klik op <span className="font-semibold">Show client secret</span>
-              en kopieer de <span className="font-semibold">Client Secret</span>.
+              Click <span className="font-semibold">Show client secret</span>
+              and copy the <span className="font-semibold">Client Secret</span>.
             </li>
           </ol>
 
           <h3 className="mt-6 font-display text-lg font-semibold text-white">
-            Waarom moet ik nog een keer inloggen met Spotify?
+            Why do I need to log in to Spotify again?
           </h3>
           <p className="mt-2">
-            De Client ID en Secret horen bij deze app. Daarna vraagt Spotify
-            nog om jouw persoonlijke toestemming om je playlists te mogen
-            lezen. Dat gebeurt via een aparte Spotify‑login. Zo houdt Spotify
-            controle over wie toegang krijgt.
+            The Client ID and Secret belong to this app. Spotify then asks for
+            your personal permission to read your playlists. That happens via a
+            separate Spotify login, so Spotify stays in control of who gets access.
           </p>
 
           <h3 className="mt-6 font-display text-lg font-semibold text-white">
-            Wat gebeurt er met mijn gegevens?
+            What happens to my data?
           </h3>
           <p className="mt-2">
-            Je Client Secret en tokens worden versleuteld opgeslagen op de
-            server. We gebruiken ze alleen om jouw Spotify‑gegevens op te halen.
-            Niets wordt gedeeld met derden.
+            Your Client Secret and tokens are stored encrypted on the server.
+            We only use them to fetch your Spotify data. Nothing is shared with
+            third parties.
           </p>
           <p className="mt-2">
-            Klik je op <span className="font-semibold">Uitloggen en wissen</span>,
-            dan verwijderen we je opgeslagen credentials, tokens én de
-            sessiecookie. Je moet dan opnieuw inloggen om de app te gebruiken.
+            If you click <span className="font-semibold">Log out and clear</span>,
+            we delete your stored credentials, tokens, and the session cookie.
+            You will need to log in again to use the app.
           </p>
         </section>
 
@@ -182,7 +181,7 @@ export default function CredentialsPage() {
                 id="spotify-client-id"
                 value={clientId}
                 onChange={(event) => setClientId(event.target.value)}
-                placeholder={credStatus.clientId ?? "Plak je Client ID"}
+                placeholder={credStatus.clientId ?? "Paste your Client ID"}
                 required
                 className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
@@ -199,7 +198,7 @@ export default function CredentialsPage() {
                 id="spotify-client-secret"
                 value={clientSecret}
                 onChange={(event) => setClientSecret(event.target.value)}
-                placeholder="Plak je Client Secret"
+                placeholder="Paste your Client Secret"
                 required
                 className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
@@ -210,13 +209,13 @@ export default function CredentialsPage() {
                 onClick={handleSaveCredentials}
                 disabled={!canSave}
               >
-                Opslaan credentials
+                Save credentials
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleClearCredentials}
               >
-                Wis credentials
+                Clear credentials
               </Button>
             </div>
           </div>
@@ -228,16 +227,16 @@ export default function CredentialsPage() {
               </p>
               <div className="mt-2 flex flex-col gap-2 text-sm text-white/80">
                 <span>
-                  Credentials: {credStatus.hasCredentials ? "opgeslagen" : "ontbreekt"}
+                  Credentials: {credStatus.hasCredentials ? "saved" : "missing"}
                 </span>
                 <span>
-                  Client ID: {credStatus.clientId ? "opgeslagen" : "ontbreekt"}
+                  Client ID: {credStatus.clientId ? "saved" : "missing"}
                 </span>
                 <span>
-                  Client Secret: {credStatus.hasClientSecret ? "opgeslagen" : "ontbreekt"}
+                  Client Secret: {credStatus.hasClientSecret ? "saved" : "missing"}
                 </span>
                 <span>
-                  Spotify auth: {authStatus.authenticated ? "ingelogd" : "niet ingelogd"}
+                  Spotify auth: {authStatus.authenticated ? "logged in" : "not logged in"}
                 </span>
               </div>
             </div>
@@ -246,17 +245,16 @@ export default function CredentialsPage() {
               onClick={handleLogin}
               disabled={!credStatus.hasCredentials}
             >
-              Inloggen met Spotify
+              Log in with Spotify
             </Button>
             <Button
               variant="secondary"
               onClick={handleLogout}
             >
-              Uitloggen en wissen
+              Log out and clear
             </Button>
             <p className="text-xs text-white/50">
-              Na inloggen worden tokens server-side bewaard. Geen tokens in de
-              browser.
+              After login, tokens are stored server-side. No tokens in the browser.
             </p>
           </div>
         </section>

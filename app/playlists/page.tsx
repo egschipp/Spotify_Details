@@ -59,7 +59,7 @@ export default function PlaylistsPage() {
           window.location.href = withBasePath("/credentials");
           return;
         }
-        setErrorMessage(data.error ?? "Playlists ophalen mislukt.");
+        setErrorMessage(data.error ?? "Failed to fetch playlists.");
         return;
       }
       setPlaylists(data.playlists ?? []);
@@ -162,7 +162,7 @@ export default function PlaylistsPage() {
             onClick={loadPlaylists}
             disabled={loading}
           >
-            Vernieuwen
+            Refresh
           </Button>
         </div>
 
@@ -179,14 +179,14 @@ export default function PlaylistsPage() {
           <div className="flex items-center justify-between text-sm text-white/60">
             <span>
               {loading
-                ? "Playlists laden..."
+                ? "Loading playlists..."
                 : `${sortedPlaylists.length} playlists`}
             </span>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
             <table className="min-w-full text-left text-sm">
-              <caption className="sr-only">Overzicht van je Spotify playlists.</caption>
+              <caption className="sr-only">Overview of your Spotify playlists.</caption>
               <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                 <tr>
                   <th scope="col" className="px-4 py-3">
@@ -194,13 +194,13 @@ export default function PlaylistsPage() {
                       <input
                         ref={selectAllRef}
                         type="checkbox"
-                        aria-label="Selecteer alle playlists"
+                        aria-label="Select all playlists"
                         checked={allSelected}
                         onChange={toggleSelectAll}
                         disabled={!sortedPlaylists.length}
                         className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                       />
-                      <span>Selectie</span>
+                      <span>Selection</span>
                     </div>
                   </th>
                   <th scope="col" className="px-4 py-3">Folder</th>
@@ -217,7 +217,7 @@ export default function PlaylistsPage() {
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
-                        aria-label={`Selecteer ${playlist.name}`}
+                        aria-label={`Select ${playlist.name}`}
                         checked={selectedPlaylistIds.has(playlist.id)}
                         onChange={() => togglePlaylistSelection(playlist.id)}
                         className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
@@ -262,7 +262,7 @@ export default function PlaylistsPage() {
                 {!loading && !sortedPlaylists.length && (
                   <tr>
                     <td className="px-4 py-6 text-sm text-white/50" colSpan={7}>
-                      Geen playlists gevonden. Log in en probeer opnieuw.
+                      No playlists found. Log in and try again.
                     </td>
                   </tr>
                 )}

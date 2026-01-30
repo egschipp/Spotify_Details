@@ -134,7 +134,7 @@ export default function HomePageClient() {
         const res = await fetch(withBasePath("/api/spotify/playlists"));
         const data = await res.json();
         if (!res.ok) {
-          setErrorMessage(data.error ?? "Playlists ophalen mislukt.");
+          setErrorMessage(data.error ?? "Failed to fetch playlists.");
           return;
         }
         setPlaylistOptions(data.playlists ?? []);
@@ -201,12 +201,12 @@ export default function HomePageClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMessage(data.error ?? "Playlist ophalen mislukt.");
+        setErrorMessage(data.error ?? "Failed to fetch playlist.");
         return;
       }
       setTracks(data.tracks ?? []);
       setSelectedTrackIds(new Set());
-      setStatusMessage(`Playlist geladen: ${data.total} tracks.`);
+      setStatusMessage(`Playlist loaded: ${data.total} tracks.`);
     } catch (error) {
       setErrorMessage((error as Error).message);
     } finally {
@@ -226,12 +226,12 @@ export default function HomePageClient() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMessage(data.error ?? "Liked songs ophalen mislukt.");
+        setErrorMessage(data.error ?? "Failed to fetch liked songs.");
         return;
       }
       setTracks(data.tracks ?? []);
       setSelectedTrackIds(new Set());
-      setStatusMessage(`Liked songs geladen: ${data.total} tracks.`);
+      setStatusMessage(`Liked songs loaded: ${data.total} tracks.`);
     } catch (error) {
       setErrorMessage((error as Error).message);
     } finally {
@@ -320,8 +320,7 @@ export default function HomePageClient() {
 
         {!authStatus.authenticated && (
           <section className="rounded-3xl border border-white/10 bg-black/50 p-6 text-sm text-white/70">
-            Je bent niet ingelogd. We sturen je door naar de
-            credentials pagina...
+            You are not logged in. Redirecting you to the credentials page...
           </section>
         )}
 
@@ -334,18 +333,18 @@ export default function HomePageClient() {
               <div>
                 <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
                 <p className="text-sm text-white/60">
-                  Live uit je Spotify player (ververst elke 3s).
+                  Live from your Spotify player (refreshes every 3s).
                 </p>
               </div>
               {loadingNowPlaying && (
                 <span className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  laden...
+                  loading...
                 </span>
               )}
             </div>
             {!authStatus.authenticated && (
               <p className="text-sm text-white/60">
-                Log in om je huidige track te zien.
+                Log in to see your current track.
               </p>
             )}
             {authStatus.authenticated && loadingNowPlaying && !nowPlaying && (
@@ -357,7 +356,7 @@ export default function HomePageClient() {
             )}
             {authStatus.authenticated && !nowPlaying?.track && (
               <p className="text-sm text-white/60">
-                Geen track actief op dit moment.
+                No track is currently playing.
               </p>
             )}
             {authStatus.authenticated && nowPlaying?.track && (
@@ -407,7 +406,7 @@ export default function HomePageClient() {
                 )}
                 <div className="space-y-3 p-4">
                   <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                    Over de artiest
+                    About the artist
                   </p>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -415,7 +414,7 @@ export default function HomePageClient() {
                         {nowPlaying.artist.name}
                       </p>
                       <p className="text-xs text-white/50">
-                        {nowPlaying.artist.followers.toLocaleString("nl-NL")} followers
+                        {nowPlaying.artist.followers.toLocaleString("en-US")} followers
                       </p>
                     </div>
                     {nowPlaying.artist.spotifyUrl && (
@@ -442,14 +441,14 @@ export default function HomePageClient() {
 
           <div className="space-y-3 rounded-2xl border border-white/10 bg-black/50 p-5">
             <div>
-              <h2 className="font-display text-2xl font-semibold">Over deze app</h2>
+              <h2 className="font-display text-2xl font-semibold">About this app</h2>
               <p className="mt-2 text-sm text-white/60">
-                Met deze app bekijk je je Spotify playlists, track‑details,
-                genres en realtime “Now Playing” in één overzicht.
+                With this app you can view your Spotify playlists, track details,
+                genres, and realtime “Now Playing” in one place.
               </p>
             </div>
             <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-              Versie
+              Version
             </div>
             <p className="text-sm text-white/70">
               {process.env.NEXT_PUBLIC_APP_VERSION}
@@ -465,10 +464,10 @@ export default function HomePageClient() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <h2 className="font-display text-2xl font-semibold">
-                  Selecteer een playlist
+                  Select a playlist
                 </h2>
                 <p className="text-sm text-white/60">
-                  Kies uit je Spotify playlists (inclusief privé playlists).
+                  Choose from your Spotify playlists (including private ones).
                 </p>
               </div>
             </div>
@@ -482,8 +481,8 @@ export default function HomePageClient() {
                 >
                   <option value="">
                     {loadingPlaylists
-                      ? "Playlists laden..."
-                      : "Selecteer een playlist"}
+                      ? "Loading playlists..."
+                      : "Select a playlist"}
                   </option>
                   {playlistOptions.map((playlist) => (
                     <option key={playlist.id} value={playlist.id}>
@@ -503,7 +502,7 @@ export default function HomePageClient() {
                     !playlistId
                   }
                 >
-                  Playlist laden
+                  Load playlist
                 </Button>
                 <Button
                   variant="secondary"
@@ -519,7 +518,7 @@ export default function HomePageClient() {
                     !selectedCount || loading || loadingLiked || !tracks.length
                   }
                 >
-                  Export selectie ({selectedCount})
+                  Export selection ({selectedCount})
                 </Button>
               </div>
             </div>
@@ -545,13 +544,13 @@ export default function HomePageClient() {
 
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm text-white/60">
-              <span>{trackCount ? `${trackCount} tracks` : "Nog geen tracks"}</span>
-              {(loading || loadingLiked) && <span>Bezig met laden...</span>}
+              <span>{trackCount ? `${trackCount} tracks` : "No tracks yet"}</span>
+              {(loading || loadingLiked) && <span>Loading...</span>}
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
               <table className="min-w-full text-left text-sm">
-                <caption className="sr-only">Tracklist van de geselecteerde playlist.</caption>
+                <caption className="sr-only">Tracklist of the selected playlist.</caption>
                 <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                   <tr>
                     <th scope="col" className="px-4 py-3">
@@ -559,13 +558,13 @@ export default function HomePageClient() {
                         <input
                           ref={selectAllRef}
                           type="checkbox"
-                          aria-label="Selecteer alle tracks"
+                          aria-label="Select all tracks"
                           checked={allSelected}
                           onChange={toggleSelectAll}
                           disabled={!tracks.length}
                           className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                         />
-                        <span>Selectie</span>
+                        <span>Selection</span>
                       </div>
                     </th>
                     <th scope="col" className="px-4 py-3">Cover</th>
@@ -573,21 +572,21 @@ export default function HomePageClient() {
                     <th scope="col" className="px-4 py-3">Spotify</th>
                     <th scope="col" className="px-4 py-3">Artists</th>
                     <th scope="col" className="px-4 py-3">Album</th>
-                    <th scope="col" className="px-4 py-3">Duur</th>
+                    <th scope="col" className="px-4 py-3">Duration</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading && (
                     <tr>
                       <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
-                        Playlist wordt geladen...
+                        Loading playlist...
                       </td>
                     </tr>
                   )}
                   {!loading && tracks.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
-                        Geen data. Log in en haal een playlist op.
+                        No data. Log in and load a playlist.
                       </td>
                     </tr>
                   )}
@@ -600,7 +599,7 @@ export default function HomePageClient() {
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
-                            aria-label={`Selecteer ${track.name}`}
+                            aria-label={`Select ${track.name}`}
                             checked={selectedTrackIds.has(track.id)}
                             onChange={() => toggleTrackSelection(track.id)}
                             className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
