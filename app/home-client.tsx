@@ -326,7 +326,10 @@ export default function HomePageClient() {
         )}
 
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-2">
-          <div className="space-y-4">
+          <div
+            className="space-y-4 rounded-2xl border border-white/10 bg-black/50 p-5"
+            aria-busy={loadingNowPlaying}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
@@ -340,10 +343,6 @@ export default function HomePageClient() {
                 </span>
               )}
             </div>
-          <div
-            className="mt-5 rounded-2xl border border-white/10 bg-black/50 p-4"
-            aria-busy={loadingNowPlaying}
-          >
             {!authStatus.authenticated && (
               <p className="text-sm text-white/60">
                 Log in om je huidige track te zien.
@@ -439,7 +438,6 @@ export default function HomePageClient() {
                 </div>
               </div>
             )}
-          </div>
           </div>
 
           <div className="space-y-3 rounded-2xl border border-white/10 bg-black/50 p-5">
