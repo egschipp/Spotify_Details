@@ -2,52 +2,127 @@
 
 Next.js App Router app that fetches Spotify playlist metadata (including private playlists) with OAuth PKCE and server-side token storage.
 
-## Setup
+## Features
 
-1. Install dependencies:
+- OAuth PKCE login with Spotify
+- Private playlists + liked tracks
+- Now Playing + artist details
+- CSV export (tracks and playlists)
+- Server-side token storage (no tokens in the browser)
 
-```bash
-npm install
-```
+## Requirements
 
-2. Create `.env.local` based on `.env.local.example` and set `SPOTIFY_CRED_ENCRYPTION_KEY`.
+- Node.js 20+
+- A Spotify Developer App (Client ID + Client Secret)
+
+Optional for production:
+- Docker + Docker Compose
+- Reverse proxy (Caddy/Nginx)
+
+## Environment variables
+
+Required:
+- `SPOTIFY_CRED_ENCRYPTION_KEY` (32-byte hex or base64)  
+  Used to encrypt client secret and tokens at rest.
+
+Recommended:
+- `SPOTIFY_SESSION_SIGNING_KEY` (32-byte hex or base64)  
+  Signs the session cookie. If not set, `SPOTIFY_CRED_ENCRYPTION_KEY` is used.
+
+Production (recommended):
+- `SPOTIFY_REDIRECT_BASE`  
+  Absolute base URL of your app (e.g. `https://example.com/spotify`)
+- `SPOTIFY_COOKIE_DOMAIN`  
+  Optional override for cookie domain (e.g. `.example.com`)
+
+Optional:
+- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`  
+  Only needed if you want server-side artist lookups without per-session credentials.
+- `SPOTIFY_DATA_DIR`  
+  Override data directory path (default: `./data`)
 
 Generate a 32-byte hex key:
-
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-3. In the Spotify Developer Dashboard, add this redirect URI to your app:
+## Local development
 
+1) Install dependencies
+```bash
+npm install
+```
+
+2) Create `.env.local` from `.env.local.example` and set the encryption key:
+```
+SPOTIFY_CRED_ENCRYPTION_KEY=YOUR_32_BYTE_KEY
+```
+
+3) Add the redirect URI in Spotify Developer Dashboard:
 ```
 http://localhost:3000/api/spotify/auth/callback
 ```
 
-If Spotify disallows `localhost`, set this env var and register the matching URI:
-
-```
-SPOTIFY_REDIRECT_BASE=http://127.0.0.1:3000
-```
-
-Optional: set client credentials so the server can fetch artist info for Now Playing:
-
-```
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_CLIENT_SECRET=your_client_secret
-```
-
-
-
-## Run
-
+4) Run the app
 ```bash
 npm run dev
 ```
 
 Open `http://localhost:3000` and enter your Spotify Client ID/Secret.
 
-## Test
+## Production with Docker (example)
+
+`docker-compose.yml` (example):
+```yaml
+services:
+  spotify-details:
+    image: ghcr.io/<OWNER>/<REPO>:latest
+    container_name: spotify-details
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BASE_PATH: /spotify
+      SPOTIFY_DATA_DIR: /app/data
+      TZ: Europe/Amsterdam
+      HOSTNAME: 0.0.0.0
+      SPOTIFY_REDIRECT_BASE: https://example.com/spotify
+    env_file:
+      - .env
+    volumes:
+      - spotify_details_data:/app/data
+    expose:
+      - "3000"
+    networks:
+      - web
+
+volumes:
+  spotify_details_data:
+
+networks:
+  web:
+    external: true
+```
+
+`.env` (production example):
+```
+SPOTIFY_CRED_ENCRYPTION_KEY=YOUR_32_BYTE_KEY
+SPOTIFY_SESSION_SIGNING_KEY=YOUR_32_BYTE_KEY
+SPOTIFY_REDIRECT_BASE=https://example.com/spotify
+SPOTIFY_COOKIE_DOMAIN=.example.com
+```
+
+## Reverse proxy (Caddy example)
+
+```caddyfile
+example.com {
+  reverse_proxy localhost:3000 {
+    header_up Host {host}
+    header_up X-Forwarded-Proto {scheme}
+    header_up X-Forwarded-Host {host}
+  }
+}
+```
+
+## Tests
 
 ```bash
 npm test
@@ -55,6 +130,18 @@ npm test
 
 ## Troubleshooting
 
-- **Auth fails or redirects with errors**: verify the redirect URI matches the one in your Spotify app.
-- **Credentials save fails**: ensure `SPOTIFY_CRED_ENCRYPTION_KEY` is set and valid (32 bytes hex/base64).
-- **Auth status stays false**: clear credentials and re-authenticate to refresh the session.
+- **Auth fails or redirects with errors**  
+  Ensure the Spotify redirect URI matches exactly:
+  `https://example.com/spotify/api/spotify/auth/callback`
+- **Auth required loops on iOS**  
+  Confirm cookies are set with `SameSite=None; Secure` and the correct domain.
+- **Credentials save fails**  
+  Check volume permissions and `SPOTIFY_CRED_ENCRYPTION_KEY`.
+- **Now Playing not shown**  
+  Make sure the user has an active playback session in Spotify.
+
+## Security notes
+
+- Client secrets and tokens are stored server-side and encrypted.
+- Session cookie is HttpOnly and signed.
+- Do not commit `.env` files.
