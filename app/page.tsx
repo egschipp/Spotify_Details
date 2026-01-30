@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen" />}>
+    <Suspense fallback={<div className="min-h-screen animate-pulse bg-black/60" />}>
       <HomePageClient />
     </Suspense>
   );

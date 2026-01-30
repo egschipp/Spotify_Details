@@ -85,9 +85,12 @@ export default function TrackDetailPage() {
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <BrandHeader />
-        <Link href="/" className="text-sm font-medium text-tide">
+        <Link
+          href="/"
+          className="text-sm font-medium text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+        >
           Terug naar playlist
         </Link>
 
@@ -98,7 +101,10 @@ export default function TrackDetailPage() {
         )}
 
         {errorMessage && (
-          <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div
+            className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            role="alert"
+          >
             {errorMessage}
           </div>
         )}
@@ -136,7 +142,7 @@ export default function TrackDetailPage() {
                     href={detail.track.spotifyUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-tide hover:text-tide"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-tide hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   >
                     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
                       <path

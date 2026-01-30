@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandHeader from "@/app/ui/BrandHeader";
+import Button from "@/app/ui/Button";
 
 const emptyTracks: TrackSummary[] = [];
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -127,7 +128,7 @@ export default function HomePageClient() {
         setPlaylistId("");
         return;
       }
-        setLoadingPlaylists(true);
+      setLoadingPlaylists(true);
       setErrorMessage(null);
       try {
         const res = await fetch(withBasePath("/api/spotify/playlists"));
@@ -313,6 +314,9 @@ export default function HomePageClient() {
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <BrandHeader />
+        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
+          Home
+        </h1>
 
         {!authStatus.authenticated && (
           <section className="rounded-3xl border border-white/10 bg-black/50 p-6 text-sm text-white/70">
@@ -336,11 +340,21 @@ export default function HomePageClient() {
                 </span>
               )}
             </div>
-          <div className="mt-5 rounded-2xl border border-white/10 bg-black/50 p-4">
+          <div
+            className="mt-5 rounded-2xl border border-white/10 bg-black/50 p-4"
+            aria-busy={loadingNowPlaying}
+          >
             {!authStatus.authenticated && (
               <p className="text-sm text-white/60">
                 Log in om je huidige track te zien.
               </p>
+            )}
+            {authStatus.authenticated && loadingNowPlaying && !nowPlaying && (
+              <div className="space-y-3">
+                <div className="h-5 w-40 animate-pulse rounded-full bg-white/10" />
+                <div className="h-4 w-56 animate-pulse rounded-full bg-white/10" />
+                <div className="h-4 w-32 animate-pulse rounded-full bg-white/10" />
+              </div>
             )}
             {authStatus.authenticated && !nowPlaying?.track && (
               <p className="text-sm text-white/60">
@@ -375,7 +389,7 @@ export default function HomePageClient() {
                     href={nowPlaying.track.spotifyUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40"
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold text-white transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   >
                     Open in Spotify
                   </a>
@@ -410,7 +424,7 @@ export default function HomePageClient() {
                         href={nowPlaying.artist.spotifyUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white transition hover:border-white/40"
+                        className="rounded-full border border-white/20 px-3 py-1 text-xs font-semibold text-white transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                       >
                         Open artist
                       </a>
@@ -466,7 +480,7 @@ export default function HomePageClient() {
                   value={playlistId}
                   onChange={(event) => setPlaylistId(event.target.value)}
                   disabled={!authStatus.authenticated || loadingPlaylists}
-                  className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">
                     {loadingPlaylists
@@ -481,7 +495,8 @@ export default function HomePageClient() {
                 </select>
               </div>
               <div className="flex flex-wrap gap-3">
-                <button
+                <Button
+                  variant="primary"
                   onClick={handleFetchPlaylist}
                   disabled={
                     !authStatus.authenticated ||
@@ -489,37 +504,43 @@ export default function HomePageClient() {
                     loadingLiked ||
                     !playlistId
                   }
-                  className="rounded-full bg-tide px-6 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Playlist laden
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={handleFetchLiked}
                   disabled={!authStatus.authenticated || loading || loadingLiked}
-                  className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Liked songs
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
                   onClick={exportSelectedTracksCsv}
                   disabled={
                     !selectedCount || loading || loadingLiked || !tracks.length
                   }
-                  className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Export geselecteerde playlist ({selectedCount})
-                </button>
+                  Export selectie ({selectedCount})
+                </Button>
               </div>
             </div>
           </div>
 
           {statusMessage && (
-            <div className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide">
+            <div
+              className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide"
+              role="status"
+              aria-live="polite"
+            >
               {statusMessage}
             </div>
           )}
           {errorMessage && (
-            <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <div
+              className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+              role="alert"
+            >
               {errorMessage}
             </div>
           )}
@@ -532,9 +553,10 @@ export default function HomePageClient() {
 
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
               <table className="min-w-full text-left text-sm">
+                <caption className="sr-only">Tracklist van de geselecteerde playlist.</caption>
                 <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                   <tr>
-                    <th className="px-4 py-3">
+                    <th scope="col" className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <input
                           ref={selectAllRef}
@@ -543,17 +565,17 @@ export default function HomePageClient() {
                           checked={allSelected}
                           onChange={toggleSelectAll}
                           disabled={!tracks.length}
-                          className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                          className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                         />
                         <span>Selectie</span>
                       </div>
                     </th>
-                    <th className="px-4 py-3">Cover</th>
-                    <th className="px-4 py-3">Track</th>
-                    <th className="px-4 py-3">Spotify</th>
-                    <th className="px-4 py-3">Artists</th>
-                    <th className="px-4 py-3">Album</th>
-                    <th className="px-4 py-3">Duur</th>
+                    <th scope="col" className="px-4 py-3">Cover</th>
+                    <th scope="col" className="px-4 py-3">Track</th>
+                    <th scope="col" className="px-4 py-3">Spotify</th>
+                    <th scope="col" className="px-4 py-3">Artists</th>
+                    <th scope="col" className="px-4 py-3">Album</th>
+                    <th scope="col" className="px-4 py-3">Duur</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -583,7 +605,7 @@ export default function HomePageClient() {
                             aria-label={`Selecteer ${track.name}`}
                             checked={selectedTrackIds.has(track.id)}
                             onChange={() => toggleTrackSelection(track.id)}
-                            className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                            className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                           />
                         </td>
                         <td className="px-4 py-3">
@@ -604,7 +626,7 @@ export default function HomePageClient() {
                         <td className="px-4 py-3">
                           <Link
                             href={`/track/${track.id}`}
-                            className="font-medium text-white hover:text-tide"
+                            className="font-medium text-white hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                           >
                             {track.name}
                           </Link>

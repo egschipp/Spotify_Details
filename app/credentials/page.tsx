@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandHeader from "@/app/ui/BrandHeader";
+import Button from "@/app/ui/Button";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
@@ -21,6 +22,8 @@ export default function CredentialsPage() {
     authenticated: false
   });
   const router = useRouter();
+  const canSave =
+    clientId.trim().length > 0 && clientSecret.trim().length > 0;
 
   async function loadStatus() {
     setErrorMessage(null);
@@ -112,8 +115,11 @@ export default function CredentialsPage() {
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <BrandHeader />
+        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
+          Credentials
+        </h1>
 
         <section className="rounded-3xl border border-white/10 bg-black/40 p-6 text-sm text-white/70">
           <h2 className="font-display text-xl font-semibold text-white">
@@ -166,41 +172,52 @@ export default function CredentialsPage() {
         <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80">
+              <label
+                htmlFor="spotify-client-id"
+                className="text-sm font-medium text-white/80"
+              >
                 Spotify Client ID
               </label>
               <input
+                id="spotify-client-id"
                 value={clientId}
                 onChange={(event) => setClientId(event.target.value)}
                 placeholder={credStatus.clientId ?? "Plak je Client ID"}
-                className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none"
+                required
+                className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-white/80">
+              <label
+                htmlFor="spotify-client-secret"
+                className="text-sm font-medium text-white/80"
+              >
                 Spotify Client Secret
               </label>
               <input
                 type="password"
+                id="spotify-client-secret"
                 value={clientSecret}
                 onChange={(event) => setClientSecret(event.target.value)}
                 placeholder="Plak je Client Secret"
-                className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none"
+                required
+                className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               />
             </div>
             <div className="flex flex-wrap gap-3">
-              <button
+              <Button
+                variant="primary"
                 onClick={handleSaveCredentials}
-                className="rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse"
+                disabled={!canSave}
               >
                 Opslaan credentials
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="secondary"
                 onClick={handleClearCredentials}
-                className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-medium text-white transition hover:border-white/40"
               >
                 Wis credentials
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -224,19 +241,19 @@ export default function CredentialsPage() {
                 </span>
               </div>
             </div>
-            <button
+            <Button
+              variant="primary"
               onClick={handleLogin}
               disabled={!credStatus.hasCredentials}
-              className="rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
             >
               Inloggen met Spotify
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleLogout}
-              className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition hover:border-white/40"
             >
               Uitloggen en wissen
-            </button>
+            </Button>
             <p className="text-xs text-white/50">
               Na inloggen worden tokens server-side bewaard. Geen tokens in de
               browser.
@@ -245,12 +262,19 @@ export default function CredentialsPage() {
         </section>
 
         {statusMessage && (
-          <div className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide">
+          <div
+            className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide"
+            role="status"
+            aria-live="polite"
+          >
             {statusMessage}
           </div>
         )}
         {errorMessage && (
-          <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div
+            className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            role="alert"
+          >
             {errorMessage}
           </div>
         )}

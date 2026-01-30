@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import BrandHeader from "@/app/ui/BrandHeader";
+import Button from "@/app/ui/Button";
 
 type PlaylistRow = {
   id: string;
@@ -142,28 +143,34 @@ export default function PlaylistsPage() {
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <BrandHeader />
+        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
+          Playlists
+        </h1>
 
         <div className="flex flex-wrap gap-3">
-          <button
+          <Button
+            variant="primary"
             onClick={exportSelectedCsv}
             disabled={!selectedCount}
-            className="rounded-full bg-tide px-6 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-pulse disabled:cursor-not-allowed disabled:opacity-50"
           >
             Export selectie ({selectedCount})
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
             onClick={loadPlaylists}
             disabled={loading}
-            className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Vernieuwen
-          </button>
+          </Button>
         </div>
 
         {errorMessage && (
-          <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <div
+            className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            role="alert"
+          >
             {errorMessage}
           </div>
         )}
@@ -179,9 +186,10 @@ export default function PlaylistsPage() {
 
           <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
             <table className="min-w-full text-left text-sm">
+              <caption className="sr-only">Overzicht van je Spotify playlists.</caption>
               <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                 <tr>
-                  <th className="px-4 py-3">
+                  <th scope="col" className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <input
                         ref={selectAllRef}
@@ -190,17 +198,17 @@ export default function PlaylistsPage() {
                         checked={allSelected}
                         onChange={toggleSelectAll}
                         disabled={!sortedPlaylists.length}
-                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                       />
                       <span>Selectie</span>
                     </div>
                   </th>
-                  <th className="px-4 py-3">Folder</th>
-                  <th className="px-4 py-3">Cover</th>
-                  <th className="px-4 py-3">Playlist</th>
-                  <th className="px-4 py-3">Tracks</th>
-                  <th className="px-4 py-3">Owner</th>
-                  <th className="px-4 py-3">External URL</th>
+                  <th scope="col" className="px-4 py-3">Folder</th>
+                  <th scope="col" className="px-4 py-3">Cover</th>
+                  <th scope="col" className="px-4 py-3">Playlist</th>
+                  <th scope="col" className="px-4 py-3">Tracks</th>
+                  <th scope="col" className="px-4 py-3">Owner</th>
+                  <th scope="col" className="px-4 py-3">External URL</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
@@ -212,7 +220,7 @@ export default function PlaylistsPage() {
                         aria-label={`Selecteer ${playlist.name}`}
                         checked={selectedPlaylistIds.has(playlist.id)}
                         onChange={() => togglePlaylistSelection(playlist.id)}
-                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus:ring-tide"
+                        className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                       />
                     </td>
                     <td className="px-4 py-3 text-white/40">—</td>
