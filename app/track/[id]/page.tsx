@@ -95,7 +95,7 @@ export default function TrackDetailPage() {
         </Link>
 
         {loading && (
-          <div className="rounded-3xl bg-mist/80 p-8 shadow-card">
+          <div className="rounded-3xl bg-mist p-8 shadow-card">
             <p className="text-sm text-white/60">Loading track...</p>
           </div>
         )}
@@ -111,7 +111,7 @@ export default function TrackDetailPage() {
 
         {detail && (
           <div className="grid gap-6">
-            <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
+            <section className="rounded-3xl bg-mist p-6 shadow-card">
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="h-28 w-28 overflow-hidden rounded-2xl bg-steel">
                   {detail.album.images?.[0] && (
@@ -156,7 +156,7 @@ export default function TrackDetailPage() {
               </div>
             </section>
 
-            <section className="grid gap-4 rounded-3xl bg-mist/80 p-6 shadow-card md:grid-cols-2">
+            <section className="grid gap-4 rounded-3xl bg-mist p-6 shadow-card md:grid-cols-2">
               <div>
                 <h2 className="font-display text-xl font-semibold">Basics</h2>
                 <dl className="mt-3 space-y-2 text-sm text-white/70">
@@ -182,7 +182,7 @@ export default function TrackDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
+            <section className="rounded-3xl bg-mist p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Genre</h2>
               <div className="mt-3 grid gap-2 text-sm text-white/70 md:grid-cols-2">
                 <div>Primary genre: {detail.track.genre}</div>
@@ -211,7 +211,7 @@ export default function TrackDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
+            <section className="rounded-3xl bg-mist p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Artists</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {detail.artists.map((artist) => (
@@ -232,7 +232,7 @@ export default function TrackDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
+            <section className="rounded-3xl bg-mist p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Album</h2>
               <div className="mt-4 grid gap-4 text-sm text-white/70 md:grid-cols-2">
                 <div>Name: {detail.album.name}</div>
@@ -243,7 +243,7 @@ export default function TrackDetailPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl bg-mist/80 p-6 shadow-card">
+            <section className="rounded-3xl bg-mist p-6 shadow-card">
               <h2 className="font-display text-xl font-semibold">Audio features</h2>
               <div className="mt-4 grid gap-2 text-sm text-white/70 md:grid-cols-3">
                 {detail.audioFeatures ? (

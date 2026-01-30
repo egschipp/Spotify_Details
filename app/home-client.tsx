@@ -324,7 +324,7 @@ export default function HomePageClient() {
           </section>
         )}
 
-        <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-2">
+        <section className="grid gap-6 rounded-3xl bg-mist p-6 shadow-card md:grid-cols-2">
           <div
             className="space-y-4 rounded-2xl border border-white/10 bg-black/50 p-5"
             aria-busy={loadingNowPlaying}
@@ -459,7 +459,7 @@ export default function HomePageClient() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur">
+        <section className="grid gap-6 rounded-3xl bg-mist p-6 shadow-card">
           <div className="space-y-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -548,7 +548,7 @@ export default function HomePageClient() {
               {(loading || loadingLiked) && <span>Loading...</span>}
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
+            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
               <table className="min-w-full text-left text-sm">
                 <caption className="sr-only">Tracklist of the selected playlist.</caption>
                 <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">

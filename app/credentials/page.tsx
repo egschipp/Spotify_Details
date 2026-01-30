@@ -168,7 +168,7 @@ export default function CredentialsPage() {
           </p>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-mist/80 p-6 shadow-card backdrop-blur md:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid gap-6 rounded-3xl bg-mist p-6 shadow-card md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-5">
             <div className="space-y-2">
               <label

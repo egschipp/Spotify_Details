@@ -184,7 +184,7 @@ export default function PlaylistsPage() {
             </span>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/40">
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
             <table className="min-w-full text-left text-sm">
               <caption className="sr-only">Overview of your Spotify playlists.</caption>
               <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
