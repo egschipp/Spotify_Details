@@ -453,7 +453,7 @@ export default function HomePageClient() {
             <p className="text-sm text-white/70">
               {process.env.NEXT_PUBLIC_APP_VERSION}
             </p>
-            <div className="flex items-center justify-between pt-2 text-xs text-white/50">
+            <div className="flex items-center gap-2 pt-2 text-xs text-white/50">
               <div className="flex items-center gap-2">
                 <span
                   className={`inline-flex h-2.5 w-2.5 rounded-full ${
@@ -465,7 +465,9 @@ export default function HomePageClient() {
                   {authStatus.authenticated ? "Auth ok" : "Auth required"}
                 </span>
               </div>
-              <span className="text-white/40">© Schippers-Online.nl</span>
+            </div>
+            <div className="pt-2 text-right text-xs text-white/40">
+              © Schippers-Online.nl
             </div>
           </div>
         </section>
