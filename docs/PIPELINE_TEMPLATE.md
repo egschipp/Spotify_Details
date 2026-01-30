@@ -4,6 +4,8 @@ Vul de waarden hieronder in en gebruik het document daarna als directe instructi
 voor een nieuwe app. Waar `{VAR}` staat, gebruik je jouw waarde.
 
 ## 0) Variabelen (invullen)
+Hier vul je alles in wat de rest van dit document gebruikt. Onder elke variabele
+staat waarvoor het is en hoe je die waarde vindt.
 
 ```
 GITHUB_OWNER="<OWNER>"              # GitHub user of org
@@ -20,6 +22,55 @@ PI_SSH_KEY="<PRIVATE_KEY>"          # Private SSH key inhoud
 
 ENV_FILE_CONTENT="<.env inhoud>"    # (optioneel) .env inhoud voor productie
 ```
+
+**Uitleg per variabele**
+
+- `GITHUB_OWNER`  
+  Waarvoor: eigenaar van de repo (user of org) en onderdeel van de GHCR image‑naam.  
+  Waar vinden: in de repo‑URL. Voorbeeld: `github.com/<OWNER>/<REPO>`.
+
+- `REPO_NAME`  
+  Waarvoor: repo‑naam en onderdeel van de GHCR image‑naam.  
+  Waar vinden: in de repo‑URL na de owner.
+
+- `APP_NAME`  
+  Waarvoor: leesbare naam in documentatie/logs.  
+  Waar vinden: kies zelf (bv. “Spotify Details”).
+
+- `SERVICE_NAME`  
+  Waarvoor: service‑naam in `docker-compose.yml` én `container_name`.  
+  Waar vinden: kies zelf (consistente naam), bv. `spotify-details`.
+
+- `APP_PORT`  
+  Waarvoor: interne poort waarop de app luistert.  
+  Waar vinden: in je app config (bijv. `PORT=3000`) of framework default.
+
+- `APP_DIR`  
+  Waarvoor: map op de Pi waar `docker-compose.yml` en `.env` staan.  
+  Waar vinden: kies zelf, bv. `/home/gh_deploy/<app>` of `/opt/<app>`.
+
+- `PUBLIC_HOST`  
+  Waarvoor: je publieke domein (voor DNS, TLS en redirect‑URI’s).  
+  Waar vinden: je DNS‑record of hostingconfig (bv. `app.example.com`).
+
+- `PI_HOST`  
+  Waarvoor: SSH target host voor deploy.  
+  Waar vinden: je publieke hostname of IP van de Pi.
+
+- `PI_USER`  
+  Waarvoor: Linux user op de Pi die docker mag gebruiken.  
+  Waar vinden: bestaande deploy user (bv. `gh_deploy`). Zorg dat deze in de `docker`‑groep zit.
+
+- `PI_SSH_KEY`  
+  Waarvoor: private key die GitHub Actions gebruikt om via SSH te deployen.  
+  Waar vinden/maken: lokaal genereren:  
+  `ssh-keygen -t ed25519 -C "gh-actions-deploy" -f gh_actions_pi`  
+  Voeg de **public key** toe op de Pi in `~/.ssh/authorized_keys` van `PI_USER`.  
+  Zet de **private key** in GitHub Secrets als `PI_SSH_KEY`.
+
+- `ENV_FILE_CONTENT` (optioneel)  
+  Waarvoor: productie‑config in `.env` die tijdens deploy geschreven wordt.  
+  Waar vinden: je productie‑waarden (API keys, DB URL’s) — **niet** in de repo.
 
 **Afgeleide waarden**
 ```
