@@ -453,9 +453,20 @@ export default function HomePageClient() {
             <p className="text-sm text-white/70">
               {process.env.NEXT_PUBLIC_APP_VERSION}
             </p>
-            <p className="pt-2 text-xs text-white/40">
-              © Schippers-Online.nl
-            </p>
+            <div className="flex items-center justify-between pt-2 text-xs text-white/50">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                    authStatus.authenticated ? "bg-tide" : "bg-red-400"
+                  }`}
+                  aria-hidden="true"
+                />
+                <span>
+                  {authStatus.authenticated ? "Auth ok" : "Auth required"}
+                </span>
+              </div>
+              <span className="text-white/40">© Schippers-Online.nl</span>
+            </div>
           </div>
         </section>
 
