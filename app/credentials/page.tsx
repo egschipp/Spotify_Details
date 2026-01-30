@@ -42,6 +42,10 @@ export default function CredentialsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    fetch(withBasePath("/api/session/refresh"), { method: "POST" }).catch(() => {});
+  }, []);
+
   async function handleSaveCredentials() {
     setStatusMessage(null);
     setErrorMessage(null);
@@ -80,7 +84,9 @@ export default function CredentialsPage() {
   function handleLogin() {
     setStatusMessage(null);
     setErrorMessage(null);
-    window.location.href = withBasePath("/api/spotify/auth/start");
+    window.location.href = withBasePath(
+      `/api/spotify/auth/start?returnTo=${encodeURIComponent(basePath || "/")}`
+    );
   }
 
   async function handleLogout() {

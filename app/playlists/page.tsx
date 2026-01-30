@@ -107,6 +107,10 @@ export default function PlaylistsPage() {
   }, []);
 
   useEffect(() => {
+    fetch(withBasePath("/api/session/refresh"), { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (selectAllRef.current) {
       selectAllRef.current.indeterminate = isIndeterminate;
     }

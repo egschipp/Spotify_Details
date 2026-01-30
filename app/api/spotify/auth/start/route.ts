@@ -41,10 +41,17 @@ export async function GET(req: NextRequest) {
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = crypto.randomUUID();
   const redirectUri = getRedirectUriFromRequest(req);
+  const urlObj = new URL(req.url);
+  const returnToParam = urlObj.searchParams.get("returnTo");
+  const returnTo =
+    returnToParam && returnToParam.startsWith("/")
+      ? returnToParam
+      : "/";
 
   await setSession(sessionId, {
     codeVerifier,
-    authState: state
+    authState: state,
+    returnTo
   });
 
   const nonce = await createOAuthRecord({

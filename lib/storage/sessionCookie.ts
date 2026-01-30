@@ -94,6 +94,10 @@ export function attachSessionCookie(
   if (!isNew) {
     return;
   }
+  setSessionCookie(res, sessionId);
+}
+
+export function setSessionCookie(res: NextResponse, sessionId: string) {
   const isProd = process.env.NODE_ENV === "production";
   const sameSite = "lax";
   const domain = getCookieDomain();

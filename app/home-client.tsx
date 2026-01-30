@@ -109,6 +109,10 @@ export default function HomePageClient() {
   }, []);
 
   useEffect(() => {
+    fetch(withBasePath("/api/session/refresh"), { method: "POST" }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const authError = searchParams.get("authError");
     if (authError) {
       setErrorMessage(decodeURIComponent(authError));

@@ -4,7 +4,8 @@ import { getCredentials, saveCredentials } from "@/lib/storage/credentialsStore"
 import {
   attachSessionCookie,
   getCookieDomain,
-  getSessionId
+  getSessionId,
+  setSessionCookie
 } from "@/lib/storage/sessionCookie";
 import {
   clearOAuthRecord,
@@ -140,7 +141,12 @@ export async function GET(req: NextRequest) {
       credentials.clientId,
       credentials.clientSecret
     );
-    const res = NextResponse.redirect(new URL(".", appBaseUrl), {
+    const sessionAfter = await getSession(sessionId);
+    const safeReturnTo =
+      sessionAfter.returnTo && sessionAfter.returnTo.startsWith("/")
+        ? sessionAfter.returnTo
+        : "/";
+    const res = NextResponse.redirect(new URL(safeReturnTo, appBaseUrl), {
       headers: rateLimitHeaders(limit.remaining, limit.resetAt)
     });
     if (resolvedNonce) {
@@ -152,7 +158,7 @@ export async function GET(req: NextRequest) {
       });
       await clearOAuthRecord(resolvedNonce);
     }
-    attachSessionCookie(res, sessionId, isNew);
+    setSessionCookie(res, sessionId);
     return res;
   } catch (error) {
     return NextResponse.json(
