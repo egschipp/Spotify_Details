@@ -1,6 +1,16 @@
 /** @type {import('next').NextConfig} */
+const fs = require("fs");
+const path = require("path");
+
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-const appVersion = require("./package.json").version;
+const versionFile = path.join(__dirname, "version.txt");
+const fileVersion = fs.existsSync(versionFile)
+  ? fs.readFileSync(versionFile, "utf8").trim()
+  : null;
+const appVersion =
+  process.env.NEXT_PUBLIC_APP_VERSION ||
+  fileVersion ||
+  require("./package.json").version;
 const nextConfig = {
   // Ensures additional React warnings in dev to catch side-effects.
   reactStrictMode: true,
