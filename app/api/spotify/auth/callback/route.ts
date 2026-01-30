@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getCredentials, saveCredentials } from "@/lib/storage/credentialsStore";
 import {
   attachSessionCookie,
@@ -83,6 +84,25 @@ export async function GET(req: NextRequest) {
     attachSessionCookie(res, sessionId, isNew);
     return res;
   }
+
+  const stateHash = crypto
+    .createHash("sha256")
+    .update(state)
+    .digest("hex")
+    .slice(0, 8);
+  console.info(
+    JSON.stringify({
+      event: "oauth_callback",
+      host: req.headers.get("host"),
+      xfHost: req.headers.get("x-forwarded-host"),
+      xfProto: req.headers.get("x-forwarded-proto"),
+      path: new URL(req.url).pathname,
+      ua: req.headers.get("user-agent"),
+      oauthNonce: Boolean(oauthNonce),
+      resolvedNonce: Boolean(resolvedNonce),
+      state: stateHash
+    })
+  );
 
   const credentials =
     (await getCredentials(sessionId)) ?? {

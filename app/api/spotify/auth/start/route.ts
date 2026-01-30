@@ -61,6 +61,23 @@ export async function GET(req: NextRequest) {
     state
   });
 
+  const stateHash = crypto
+    .createHash("sha256")
+    .update(state)
+    .digest("hex")
+    .slice(0, 8);
+  console.info(
+    JSON.stringify({
+      event: "oauth_start",
+      host: req.headers.get("host"),
+      xfHost: req.headers.get("x-forwarded-host"),
+      xfProto: req.headers.get("x-forwarded-proto"),
+      path: new URL(req.url).pathname,
+      ua: req.headers.get("user-agent"),
+      state: stateHash
+    })
+  );
+
   const res = NextResponse.redirect(url, {
     headers: rateLimitHeaders(limit.remaining, limit.resetAt)
   });

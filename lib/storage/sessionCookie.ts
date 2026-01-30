@@ -95,7 +95,7 @@ export function attachSessionCookie(
     return;
   }
   const isProd = process.env.NODE_ENV === "production";
-  const sameSite = isProd ? "none" : "lax";
+  const sameSite = "lax";
   const domain = getCookieDomain();
   res.cookies.set({
     name: COOKIE_NAME,
