@@ -439,22 +439,22 @@ export default function HomePageClient() {
             )}
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/50 p-5">
-            <div>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
               <h2 className="font-display text-2xl font-semibold">About this app</h2>
               <p className="mt-2 text-sm text-white/60">
                 With this app you can view your Spotify playlists, track details,
                 genres, and realtime “Now Playing” in one place.
               </p>
             </div>
-            <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-              Version
-            </div>
-            <p className="text-sm text-white/70">
-              {process.env.NEXT_PUBLIC_APP_VERSION}
-            </p>
-            <div className="flex items-center gap-2 pt-2 text-xs text-white/50">
-              <div className="flex items-center gap-2">
+            <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
+              <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                Version
+              </div>
+              <p className="mt-2 text-sm text-white/70">
+                {process.env.NEXT_PUBLIC_APP_VERSION}
+              </p>
+              <div className="mt-4 flex items-center gap-2 text-xs text-white/50">
                 <span
                   className={`inline-flex h-2.5 w-2.5 rounded-full ${
                     authStatus.authenticated ? "bg-tide" : "bg-red-400"
@@ -465,9 +465,9 @@ export default function HomePageClient() {
                   {authStatus.authenticated ? "Auth ok" : "Auth required"}
                 </span>
               </div>
-            </div>
-            <div className="pt-2 text-right text-xs text-white/40">
-              © Schippers-Online.nl
+              <div className="pt-3 text-right text-xs text-white/40">
+                © Schippers-Online.nl
+              </div>
             </div>
           </div>
         </section>
