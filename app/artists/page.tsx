@@ -49,6 +49,7 @@ export default function ArtistsPage() {
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [playerDeviceId, setPlayerDeviceId] = useState<string | null>(null);
+  const [playerVolume, setPlayerVolume] = useState(0.8);
   const [devices, setDevices] = useState<{ id: string; name: string; type: string; is_active: boolean }[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
@@ -64,6 +65,8 @@ export default function ArtistsPage() {
   const playerInstanceRef = useRef<any>(null);
   const artistListRef = useRef<HTMLDivElement | null>(null);
   const artistAnchorRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [artistSearch, setArtistSearch] = useState("");
+  const artistSearchRef = useRef<HTMLInputElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -76,15 +79,6 @@ export default function ArtistsPage() {
     );
   }, [tracks, artistId]);
 
-  const artistLetters = useMemo(() => {
-    const letters = new Set<string>();
-    for (const artist of artistOptions) {
-      const letter = artist.name?.[0]?.toUpperCase();
-      if (letter) letters.add(letter);
-    }
-    return Array.from(letters).sort();
-  }, [artistOptions]);
-
   useEffect(() => {
     setSelectedTrack(null);
   }, [artistId]);
@@ -92,6 +86,12 @@ export default function ArtistsPage() {
   useEffect(() => {
     artistAnchorRef.current = {};
   }, [artistOptions]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      requestAnimationFrame(() => artistSearchRef.current?.focus());
+    }
+  }, [menuOpen]);
 
   useEffect(() => {
     async function loadStatus() {
@@ -160,7 +160,7 @@ export default function ArtistsPage() {
             setPlayerError(formatPlayerError((error as Error).message));
           }
         },
-        volume: 0.8
+        volume: playerVolume
       });
       player.addListener("ready", ({ device_id }: { device_id: string }) => {
         setPlayerDeviceId(device_id);
@@ -328,6 +328,30 @@ export default function ArtistsPage() {
     }
   }
 
+  async function changePlayerVolume(delta: number) {
+    const next = Math.min(1, Math.max(0, playerVolume + delta));
+    setPlayerVolume(next);
+    try {
+      await playerInstanceRef.current?.setVolume(next);
+    } catch {
+      // ignore SDK errors; UI will still reflect current value
+    }
+  }
+
+  function handleArtistSearch(value: string) {
+    setArtistSearch(value);
+    const query = value.trim().toLowerCase();
+    if (!query) return;
+    const match = artistOptions.find((artist) =>
+      artist.name.toLowerCase().startsWith(query)
+    );
+    if (!match) return;
+    const target = artistAnchorRef.current[match.id];
+    if (target) {
+      target.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -382,65 +406,54 @@ export default function ArtistsPage() {
                   aria-label="Artists"
                   className="absolute z-10 mt-2 w-full rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
                 >
-                  <div className="flex gap-2">
-                    <div
-                      ref={artistListRef}
-                      className="max-h-72 flex-1 overflow-auto pr-2"
-                    >
-                      {artistOptions.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-white/60">
-                          No artists available.
-                        </div>
-                      )}
-                      {artistOptions.map((artist) => {
-                        const isSelected = artist.id === artistId;
-                        const letter = artist.name?.[0]?.toUpperCase() ?? "";
-                        const anchorMap = artistAnchorRef.current;
-                        const setAnchor = (el: HTMLButtonElement | null) => {
-                          if (!el) return;
-                          if (!anchorMap[letter]) {
-                            anchorMap[letter] = el;
-                          }
-                        };
-                        return (
-                          <button
-                            key={artist.id}
-                            ref={setAnchor}
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            onClick={() => {
-                              setArtistId(artist.id);
-                              setMenuOpen(false);
-                            }}
-                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                              isSelected
-                                ? "bg-tide/20 text-white"
-                                : "text-white/80 hover:bg-white/5"
-                            }`}
-                          >
-                            <span className="truncate">{artist.name}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex max-h-72 flex-col items-center gap-1 overflow-auto pr-1 text-[10px] text-white/50">
-                      {artistLetters.map((letter) => (
+                  <div className="p-2">
+                    <input
+                      ref={artistSearchRef}
+                      type="text"
+                      value={artistSearch}
+                      onChange={(event) => handleArtistSearch(event.target.value)}
+                      placeholder="Type to jump to an artist..."
+                      className="w-full rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    />
+                  </div>
+                  <div
+                    ref={artistListRef}
+                    className="max-h-72 overflow-auto px-2 pb-2"
+                  >
+                    {artistOptions.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-white/60">
+                        No artists available.
+                      </div>
+                    )}
+                    {artistOptions.map((artist) => {
+                      const isSelected = artist.id === artistId;
+                      const anchorMap = artistAnchorRef.current;
+                      const setAnchor = (el: HTMLButtonElement | null) => {
+                        if (el) {
+                          anchorMap[artist.id] = el;
+                        }
+                      };
+                      return (
                         <button
-                          key={letter}
+                          key={artist.id}
+                          ref={setAnchor}
                           type="button"
+                          role="option"
+                          aria-selected={isSelected}
                           onClick={() => {
-                            const target = artistAnchorRef.current[letter];
-                            if (target) {
-                              target.scrollIntoView({ block: "start", behavior: "smooth" });
-                            }
+                            setArtistId(artist.id);
+                            setMenuOpen(false);
                           }}
-                          className="rounded px-1 py-0.5 transition hover:text-white"
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                            isSelected
+                              ? "bg-tide/20 text-white"
+                              : "text-white/80 hover:bg-white/5"
+                          }`}
                         >
-                          {letter}
+                          <span className="truncate">{artist.name}</span>
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -528,21 +541,23 @@ export default function ArtistsPage() {
               )}
 
               <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-2xl border border-white/10 bg-black/70 p-3">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/80">
                   {selectedTrack ? (
                     <iframe
                       title={`Spotify player: ${selectedTrack.name}`}
                       src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
                       width="100%"
-                      height="152"
+                      height="180"
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       loading="lazy"
-                      className="rounded-xl border border-white/10 bg-black"
+                      className="block w-full border-0 bg-black"
                     />
                   ) : (
-                    <p className="text-sm text-white/60">
-                      Choose a track and it will play on your selected device.
-                    </p>
+                    <div className="p-4">
+                      <p className="text-sm text-white/60">
+                        Choose a track and it will play on your selected device.
+                      </p>
+                    </div>
                   )}
                 </div>
 
@@ -551,13 +566,34 @@ export default function ArtistsPage() {
                     <p className="text-xs uppercase tracking-[0.2em] text-white/40">
                       Spotify Connect
                     </p>
-                    <button
-                      type="button"
-                      onClick={refreshDevices}
-                      className="rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[10px] font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                    >
-                      Refresh
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px] text-white/70">
+                        <button
+                          type="button"
+                          onClick={() => changePlayerVolume(-0.1)}
+                          aria-label="Decrease volume"
+                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                        >
+                          -
+                        </button>
+                        <span>{Math.round(playerVolume * 100)}%</span>
+                        <button
+                          type="button"
+                          onClick={() => changePlayerVolume(0.1)}
+                          aria-label="Increase volume"
+                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refreshDevices}
+                        className="rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[10px] font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                      >
+                        Refresh
+                      </button>
+                    </div>
                   </div>
                   <div className="relative mt-3" ref={deviceMenuRef}>
                     <button
