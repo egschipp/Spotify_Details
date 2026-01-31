@@ -39,6 +39,10 @@ export default function ArtistsPage() {
   const [artistOptions, setArtistOptions] = useState<ArtistOption[]>([]);
   const [artistId, setArtistId] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<TrackSummary | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
+    null
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -88,6 +92,8 @@ export default function ArtistsPage() {
         }
         setTracks(data.tracks ?? []);
         setArtistOptions(data.artists ?? []);
+        setUpdatedAt(data.updatedAt ?? null);
+        setSyncStatus(data.syncStatus ?? null);
       })
       .catch((error) => setErrorMessage((error as Error).message))
       .finally(() => setLoading(false));
@@ -216,7 +222,31 @@ export default function ArtistsPage() {
                   ? `${filteredTracks.length} tracks`
                   : "Select an artist to view tracks"}
               </span>
-              {loading && <span>Loading library...</span>}
+              <span className="flex items-center gap-3">
+                {updatedAt && (
+                  <span className="text-xs text-white/50">
+                    Updated {new Date(updatedAt).toLocaleString("en-US")}
+                  </span>
+                )}
+                {syncStatus && (
+                  <span
+                    className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                      syncStatus === "ok"
+                        ? "bg-tide/20 text-tide"
+                        : syncStatus === "syncing"
+                          ? "bg-white/10 text-white/60"
+                          : "bg-red-500/20 text-red-200"
+                    }`}
+                  >
+                    {syncStatus === "ok"
+                      ? "connected"
+                      : syncStatus === "syncing"
+                        ? "syncing"
+                        : "error"}
+                  </span>
+                )}
+                {loading && <span>Loading library...</span>}
+              </span>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
@@ -254,7 +284,21 @@ export default function ArtistsPage() {
                           onClick={() => setSelectedTrack(track)}
                           className="text-left font-medium text-white transition hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                         >
-                          {track.name}
+                          <span className="inline-flex items-center gap-2">
+                            {selectedTrack?.id === track.id && (
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="h-4 w-4 text-tide"
+                                aria-hidden="true"
+                              >
+                                <path
+                                  fill="currentColor"
+                                  d="M8 5v14l11-7z"
+                                />
+                              </svg>
+                            )}
+                            {track.name}
+                          </span>
                         </button>
                       </td>
                       <td className="px-4 py-3 text-white/70">{track.album.name}</td>

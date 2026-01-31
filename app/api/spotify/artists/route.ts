@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
 import { getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
 import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
+import fs from "fs/promises";
+import path from "path";
 
 type SpotifyPlaylist = {
   id: string;
@@ -57,16 +59,69 @@ type ArtistsPayload = {
     durationMs: number;
     playlistNames: string[];
   }[];
+  updatedAt: string;
+  cacheStatus?: "fresh" | "stale" | "miss";
+  syncStatus?: "ok" | "syncing" | "error";
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const artistsCache = new Map<string, { expiresAt: number; payload: ArtistsPayload }>();
+const refreshLocks = new Map<string, Promise<void>>();
+const MAX_RETRIES = 3;
+const RETRY_FALLBACK_MS = 1500;
+const CACHE_FOLDER = "cache";
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getCacheDir() {
+  const base = process.env.SPOTIFY_DATA_DIR ?? path.join(process.cwd(), "data");
+  return path.join(base, CACHE_FOLDER);
+}
+
+function getCachePath(sessionId: string) {
+  return path.join(getCacheDir(), `artists-${sessionId}.json`);
+}
+
+async function readCache(sessionId: string): Promise<ArtistsPayload | null> {
+  try {
+    const data = await fs.readFile(getCachePath(sessionId), "utf8");
+    return JSON.parse(data) as ArtistsPayload;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(sessionId: string, payload: ArtistsPayload) {
+  await fs.mkdir(getCacheDir(), { recursive: true });
+  await fs.writeFile(getCachePath(sessionId), JSON.stringify(payload), "utf8");
+}
+
+async function spotifyFetchWithRetry(
+  path: string,
+  accessToken: string
+): Promise<Response> {
+  let attempt = 0;
+  while (true) {
+    const response = await spotifyFetch(path, accessToken);
+    if (response.status !== 429 || attempt >= MAX_RETRIES) {
+      return response;
+    }
+    const retryAfter = response.headers.get("retry-after");
+    const waitMs = retryAfter
+      ? Number(retryAfter) * 1000
+      : RETRY_FALLBACK_MS * (attempt + 1);
+    await sleep(waitMs);
+    attempt += 1;
+  }
+}
 
 async function fetchAllPlaylists(accessToken: string): Promise<SpotifyPlaylist[]> {
   const items: SpotifyPlaylist[] = [];
   let next: string | null = `/me/playlists?limit=50`;
   while (next) {
-    const response = await spotifyFetch(next, accessToken);
+    const response = await spotifyFetchWithRetry(next, accessToken);
     if (!response.ok) {
       throw new Error(`Spotify playlists fetch failed (${response.status}).`);
     }
@@ -84,7 +139,7 @@ async function fetchAllPlaylistTracks(
   const tracks: SpotifyTrack[] = [];
   let next: string | null = `/playlists/${playlistId}/tracks?limit=50&fields=items(track(id,name,artists(id,name),album(id,name,images),duration_ms,explicit,popularity,preview_url,uri,is_local,external_urls)),next`;
   while (next) {
-    const response = await spotifyFetch(next, accessToken);
+    const response = await spotifyFetchWithRetry(next, accessToken);
     if (!response.ok) {
       throw new Error(`Spotify playlist tracks fetch failed (${response.status}).`);
     }
@@ -103,7 +158,7 @@ async function fetchAllLikedTracks(accessToken: string): Promise<SpotifyTrack[]>
   const tracks: SpotifyTrack[] = [];
   let next: string | null = `/me/tracks?limit=50`;
   while (next) {
-    const response = await spotifyFetch(next, accessToken);
+    const response = await spotifyFetchWithRetry(next, accessToken);
     if (!response.ok) {
       throw new Error(`Spotify liked tracks fetch failed (${response.status}).`);
     }
@@ -128,6 +183,39 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const diskCache = await readCache(sessionId);
+    if (diskCache) {
+      const updatedAt = new Date(diskCache.updatedAt).getTime();
+      const isFresh = Date.now() - updatedAt < CACHE_TTL_MS;
+      if (isFresh) {
+        const res = NextResponse.json(diskCache, {
+          headers: {
+            ...rateLimitHeaders(limit.remaining, limit.resetAt),
+            "x-cache": "hit"
+          }
+        });
+        attachSessionCookie(res, sessionId, isNew);
+        return res;
+      }
+      if (!refreshLocks.has(sessionId)) {
+        const refreshPromise = refreshArtistsCache(sessionId).finally(() => {
+          refreshLocks.delete(sessionId);
+        });
+        refreshLocks.set(sessionId, refreshPromise);
+      }
+      const res = NextResponse.json(
+        { ...diskCache, cacheStatus: "stale", syncStatus: "syncing" },
+        {
+        headers: {
+          ...rateLimitHeaders(limit.remaining, limit.resetAt),
+          "x-cache": "stale"
+        }
+        }
+      );
+      attachSessionCookie(res, sessionId, isNew);
+      return res;
+    }
+
     const cached = artistsCache.get(sessionId);
     if (cached && cached.expiresAt > Date.now()) {
       const res = NextResponse.json(cached.payload, {
@@ -140,68 +228,13 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    const accessToken = await getValidAccessToken(sessionId);
-    const playlists = await fetchAllPlaylists(accessToken);
-
-    const trackMap = new Map<
-      string,
+    const payload = await buildArtistsPayload(sessionId);
+    const res = NextResponse.json(
+      { ...payload, cacheStatus: "miss", syncStatus: "ok" },
       {
-        track: SpotifyTrack;
-        playlistNames: Set<string>;
-      }
-    >();
-
-    // Collect tracks from each playlist (sequential to avoid rate limits).
-    for (const playlist of playlists) {
-      const playlistTracks = await fetchAllPlaylistTracks(accessToken, playlist.id);
-      for (const track of playlistTracks) {
-        const entry = trackMap.get(track.id) ?? {
-          track,
-          playlistNames: new Set<string>()
-        };
-        entry.playlistNames.add(playlist.name);
-        trackMap.set(track.id, entry);
-      }
-    }
-
-    // Add liked tracks and tag them with a virtual playlist label.
-    const likedTracks = await fetchAllLikedTracks(accessToken);
-    for (const track of likedTracks) {
-      const entry = trackMap.get(track.id) ?? {
-        track,
-        playlistNames: new Set<string>()
-      };
-      entry.playlistNames.add("Liked songs");
-      trackMap.set(track.id, entry);
-    }
-
-    const tracks = Array.from(trackMap.values()).map((entry) => ({
-      id: entry.track.id,
-      name: entry.track.name,
-      artists: entry.track.artists,
-      album: entry.track.album,
-      spotifyUrl: entry.track.external_urls?.spotify ?? null,
-      durationMs: entry.track.duration_ms,
-      playlistNames: Array.from(entry.playlistNames).sort((a, b) =>
-        a.localeCompare(b, "en", { sensitivity: "base" })
-      )
-    }));
-
-    const artists = Array.from(
-      new Map(
-        tracks
-          .flatMap((track) => track.artists)
-          .map((artist) => [artist.id, artist.name])
-      ).entries()
-    )
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
-
-    const payload: ArtistsPayload = { artists, tracks };
-    artistsCache.set(sessionId, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
-    const res = NextResponse.json(payload, {
       headers: rateLimitHeaders(limit.remaining, limit.resetAt)
-    });
+      }
+    );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {
@@ -211,8 +244,85 @@ export async function POST(req: NextRequest) {
       : message.includes("credentials")
         ? 400
         : 500;
-    const res = NextResponse.json({ error: message }, { status });
+    const res = NextResponse.json({ error: message, syncStatus: "error" }, { status });
     attachSessionCookie(res, sessionId, isNew);
     return res;
+  }
+}
+
+async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
+  const accessToken = await getValidAccessToken(sessionId);
+  const playlists = await fetchAllPlaylists(accessToken);
+
+  const trackMap = new Map<
+    string,
+    {
+      track: SpotifyTrack;
+      playlistNames: Set<string>;
+    }
+  >();
+
+  // Collect tracks from each playlist (sequential to avoid rate limits).
+  for (const playlist of playlists) {
+    const playlistTracks = await fetchAllPlaylistTracks(accessToken, playlist.id);
+    for (const track of playlistTracks) {
+      const entry = trackMap.get(track.id) ?? {
+        track,
+        playlistNames: new Set<string>()
+      };
+      entry.playlistNames.add(playlist.name);
+      trackMap.set(track.id, entry);
+    }
+  }
+
+  // Add liked tracks and tag them with a virtual playlist label.
+  const likedTracks = await fetchAllLikedTracks(accessToken);
+  for (const track of likedTracks) {
+    const entry = trackMap.get(track.id) ?? {
+      track,
+      playlistNames: new Set<string>()
+    };
+    entry.playlistNames.add("Liked songs");
+    trackMap.set(track.id, entry);
+  }
+
+  const tracks = Array.from(trackMap.values()).map((entry) => ({
+    id: entry.track.id,
+    name: entry.track.name,
+    artists: entry.track.artists,
+    album: entry.track.album,
+    spotifyUrl: entry.track.external_urls?.spotify ?? null,
+    durationMs: entry.track.duration_ms,
+    playlistNames: Array.from(entry.playlistNames)
+      .filter((name): name is string => Boolean(name))
+      .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))
+  }));
+
+  const artists = Array.from(
+    new Map(
+      tracks
+        .flatMap((track) => track.artists)
+        .filter((artist) => artist?.id && artist?.name)
+        .map((artist) => [artist.id, artist.name])
+    ).entries()
+  )
+    .map(([id, name]) => ({ id, name: name ?? "Unknown artist" }))
+    .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+
+  const payload: ArtistsPayload = {
+    artists,
+    tracks,
+    updatedAt: new Date().toISOString()
+  };
+  artistsCache.set(sessionId, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
+  await writeCache(sessionId, payload);
+  return payload;
+}
+
+async function refreshArtistsCache(sessionId: string) {
+  try {
+    await buildArtistsPayload(sessionId);
+  } catch {
+    // Best-effort background refresh; ignore errors to keep serving stale cache.
   }
 }
