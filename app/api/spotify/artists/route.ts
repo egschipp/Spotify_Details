@@ -46,6 +46,22 @@ type SpotifySavedTracksResponse = {
   next: string | null;
 };
 
+type ArtistsPayload = {
+  artists: { id: string; name: string }[];
+  tracks: {
+    id: string;
+    name: string;
+    artists: { id: string; name: string }[];
+    album: { id: string; name: string; images: { url: string }[] };
+    spotifyUrl: string | null;
+    durationMs: number;
+    playlistNames: string[];
+  }[];
+};
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const artistsCache = new Map<string, { expiresAt: number; payload: ArtistsPayload }>();
+
 async function fetchAllPlaylists(accessToken: string): Promise<SpotifyPlaylist[]> {
   const items: SpotifyPlaylist[] = [];
   let next: string | null = `/me/playlists?limit=50`;
@@ -112,6 +128,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const cached = artistsCache.get(sessionId);
+    if (cached && cached.expiresAt > Date.now()) {
+      const res = NextResponse.json(cached.payload, {
+        headers: {
+          ...rateLimitHeaders(limit.remaining, limit.resetAt),
+          "x-cache": "hit"
+        }
+      });
+      attachSessionCookie(res, sessionId, isNew);
+      return res;
+    }
+
     const accessToken = await getValidAccessToken(sessionId);
     const playlists = await fetchAllPlaylists(accessToken);
 
@@ -169,10 +197,11 @@ export async function POST(req: NextRequest) {
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
 
-    const res = NextResponse.json(
-      { artists, tracks },
-      { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
-    );
+    const payload: ArtistsPayload = { artists, tracks };
+    artistsCache.set(sessionId, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
+    const res = NextResponse.json(payload, {
+      headers: rateLimitHeaders(limit.remaining, limit.resetAt)
+    });
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {

@@ -38,6 +38,7 @@ export default function ArtistsPage() {
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
   const [artistOptions, setArtistOptions] = useState<ArtistOption[]>([]);
   const [artistId, setArtistId] = useState("");
+  const [selectedTrack, setSelectedTrack] = useState<TrackSummary | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -49,6 +50,10 @@ export default function ArtistsPage() {
       track.artists.some((artist) => artist.id === artistId)
     );
   }, [tracks, artistId]);
+
+  useEffect(() => {
+    setSelectedTrack(null);
+  }, [artistId]);
 
   useEffect(() => {
     async function loadStatus() {
@@ -243,7 +248,15 @@ export default function ArtistsPage() {
                   )}
                   {filteredTracks.map((track) => (
                     <tr key={track.id} className="border-t border-white/5 hover:bg-white/5">
-                      <td className="px-4 py-3 text-white">{track.name}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTrack(track)}
+                          className="text-left font-medium text-white transition hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                        >
+                          {track.name}
+                        </button>
+                      </td>
                       <td className="px-4 py-3 text-white/70">{track.album.name}</td>
                       <td className="px-4 py-3 text-white/60">
                         {formatDuration(track.durationMs)}
@@ -269,6 +282,29 @@ export default function ArtistsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                Player
+              </div>
+              <div className="mt-3">
+                {selectedTrack ? (
+                  <iframe
+                    title={`Spotify player: ${selectedTrack.name}`}
+                    src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
+                    width="100%"
+                    height="152"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    className="rounded-xl border border-white/10"
+                  />
+                ) : (
+                  <p className="text-sm text-white/60">
+                    Select a track to start playback.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </section>
