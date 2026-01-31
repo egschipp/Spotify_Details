@@ -55,6 +55,8 @@ export default function ArtistsPage() {
   const deviceMenuRef = useRef<HTMLDivElement | null>(null);
   const deviceButtonRef = useRef<HTMLButtonElement | null>(null);
   const playerInstanceRef = useRef<any>(null);
+  const artistListRef = useRef<HTMLDivElement | null>(null);
+  const artistAnchorRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -67,9 +69,22 @@ export default function ArtistsPage() {
     );
   }, [tracks, artistId]);
 
+  const artistLetters = useMemo(() => {
+    const letters = new Set<string>();
+    for (const artist of artistOptions) {
+      const letter = artist.name?.[0]?.toUpperCase();
+      if (letter) letters.add(letter);
+    }
+    return Array.from(letters).sort();
+  }, [artistOptions]);
+
   useEffect(() => {
     setSelectedTrack(null);
   }, [artistId]);
+
+  useEffect(() => {
+    artistAnchorRef.current = {};
+  }, [artistOptions]);
 
   useEffect(() => {
     async function loadStatus() {
@@ -358,35 +373,68 @@ export default function ArtistsPage() {
                 <div
                   role="listbox"
                   aria-label="Artists"
-                  className="absolute z-10 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
+                  className="absolute z-10 mt-2 w-full rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
                 >
-                  {artistOptions.length === 0 && (
-                    <div className="px-3 py-2 text-sm text-white/60">
-                      No artists available.
+                  <div className="flex gap-2">
+                    <div
+                      ref={artistListRef}
+                      className="max-h-72 flex-1 overflow-auto pr-2"
+                    >
+                      {artistOptions.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-white/60">
+                          No artists available.
+                        </div>
+                      )}
+                      {artistOptions.map((artist) => {
+                        const isSelected = artist.id === artistId;
+                        const letter = artist.name?.[0]?.toUpperCase() ?? "";
+                        const anchorMap = artistAnchorRef.current;
+                        const setAnchor = (el: HTMLButtonElement | null) => {
+                          if (!el) return;
+                          if (!anchorMap[letter]) {
+                            anchorMap[letter] = el;
+                          }
+                        };
+                        return (
+                          <button
+                            key={artist.id}
+                            ref={setAnchor}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setArtistId(artist.id);
+                              setMenuOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                              isSelected
+                                ? "bg-tide/20 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="truncate">{artist.name}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                  {artistOptions.map((artist) => {
-                    const isSelected = artist.id === artistId;
-                    return (
-                      <button
-                        key={artist.id}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        onClick={() => {
-                          setArtistId(artist.id);
-                          setMenuOpen(false);
-                        }}
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                          isSelected
-                            ? "bg-tide/20 text-white"
-                            : "text-white/80 hover:bg-white/5"
-                        }`}
-                      >
-                        <span className="truncate">{artist.name}</span>
-                      </button>
-                    );
-                  })}
+                    <div className="flex max-h-72 flex-col items-center gap-1 overflow-auto pr-1 text-[10px] text-white/50">
+                      {artistLetters.map((letter) => (
+                        <button
+                          key={letter}
+                          type="button"
+                          onClick={() => {
+                            const target = artistAnchorRef.current[letter];
+                            if (target) {
+                              target.scrollIntoView({ block: "start", behavior: "smooth" });
+                            }
+                          }}
+                          className="rounded px-1 py-0.5 transition hover:text-white"
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
