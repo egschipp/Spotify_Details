@@ -289,7 +289,7 @@ export default function ArtistsPage() {
   }
 
   async function playOnDevice(track: TrackSummary) {
-    const deviceId = selectedDeviceId ?? playerDeviceId;
+    const deviceId = selectedDeviceId;
     if (!deviceId) return;
     try {
       const res = await fetch(withBasePath("/api/spotify/player/play"), {
