@@ -43,6 +43,7 @@ export default function ArtistsPage() {
   const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
     null
   );
+  const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -98,6 +99,30 @@ export default function ArtistsPage() {
       .catch((error) => setErrorMessage((error as Error).message))
       .finally(() => setLoading(false));
   }, [authStatus.authenticated]);
+
+  async function handleForceRefresh() {
+    if (!authStatus.authenticated) return;
+    setRefreshing(true);
+    setSyncStatus("syncing");
+    try {
+      const res = await fetch(withBasePath("/api/spotify/artists?force=1"), {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to refresh artist data.");
+      }
+      setTracks(data.tracks ?? []);
+      setArtistOptions(data.artists ?? []);
+      setUpdatedAt(data.updatedAt ?? null);
+      setSyncStatus(data.syncStatus ?? "ok");
+    } catch (error) {
+      setSyncStatus("error");
+      setErrorMessage((error as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -247,6 +272,16 @@ export default function ArtistsPage() {
                 )}
                 {loading && <span>Loading library...</span>}
               </span>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleForceRefresh}
+                disabled={refreshing || loading}
+                className="rounded-full border border-white/15 bg-black/50 px-4 py-2 text-xs font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {refreshing ? "Refreshing..." : "Force refresh"}
+              </button>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">

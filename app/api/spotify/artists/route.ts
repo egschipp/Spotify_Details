@@ -171,6 +171,8 @@ async function fetchAllLikedTracks(accessToken: string): Promise<SpotifyTrack[]>
 
 export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const url = new URL(req.url);
+  const forceRefresh = url.searchParams.get("force") === "1";
   const limit = rateLimit(`artists:${sessionId}`, {
     windowMs: 60_000,
     max: 4
@@ -187,7 +189,7 @@ export async function POST(req: NextRequest) {
     if (diskCache) {
       const updatedAt = new Date(diskCache.updatedAt).getTime();
       const isFresh = Date.now() - updatedAt < CACHE_TTL_MS;
-      if (isFresh) {
+      if (isFresh && !forceRefresh) {
         const res = NextResponse.json(diskCache, {
           headers: {
             ...rateLimitHeaders(limit.remaining, limit.resetAt),
@@ -203,17 +205,19 @@ export async function POST(req: NextRequest) {
         });
         refreshLocks.set(sessionId, refreshPromise);
       }
-      const res = NextResponse.json(
-        { ...diskCache, cacheStatus: "stale", syncStatus: "syncing" },
-        {
-        headers: {
-          ...rateLimitHeaders(limit.remaining, limit.resetAt),
-          "x-cache": "stale"
-        }
-        }
-      );
-      attachSessionCookie(res, sessionId, isNew);
-      return res;
+      if (!forceRefresh) {
+        const res = NextResponse.json(
+          { ...diskCache, cacheStatus: "stale", syncStatus: "syncing" },
+          {
+            headers: {
+              ...rateLimitHeaders(limit.remaining, limit.resetAt),
+              "x-cache": "stale"
+            }
+          }
+        );
+        attachSessionCookie(res, sessionId, isNew);
+        return res;
+      }
     }
 
     const cached = artistsCache.get(sessionId);
