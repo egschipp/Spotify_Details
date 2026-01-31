@@ -5,9 +5,9 @@ import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
-  const limit = rateLimit(`player-play:${sessionId}`, {
+  const limit = rateLimit(`player-next:${sessionId}`, {
     windowMs: 60_000,
-    max: 20
+    max: 30
   });
   if (!limit.ok) {
     return NextResponse.json(
@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const deviceId = String(body?.deviceId || "");
-    const uri = body?.uri ? String(body.uri) : "";
     if (!deviceId) {
       return NextResponse.json(
         { error: "Missing deviceId." },
@@ -29,21 +28,19 @@ export async function POST(req: NextRequest) {
 
     const accessToken = await getValidAccessToken(sessionId);
     const response = await fetch(
-      `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(
+      `https://api.spotify.com/v1/me/player/next?device_id=${encodeURIComponent(
         deviceId
       )}`,
       {
-        method: "PUT",
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: uri ? JSON.stringify({ uris: [uri] }) : undefined
+          Authorization: `Bearer ${accessToken}`
+        }
       }
     );
-    if (!response.ok) {
+    if (!response.ok && response.status !== 204) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error?.message || "Failed to start playback.");
+      throw new Error(data?.error?.message || "Failed to skip track.");
     }
 
     const res = NextResponse.json(

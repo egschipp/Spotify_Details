@@ -5,9 +5,9 @@ import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 
 export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
-  const limit = rateLimit(`player-play:${sessionId}`, {
+  const limit = rateLimit(`player-volume:${sessionId}`, {
     windowMs: 60_000,
-    max: 20
+    max: 60
   });
   if (!limit.ok) {
     return NextResponse.json(
@@ -19,31 +19,30 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const deviceId = String(body?.deviceId || "");
-    const uri = body?.uri ? String(body.uri) : "";
-    if (!deviceId) {
+    const volume = Number(body?.volume ?? NaN);
+    if (!deviceId || Number.isNaN(volume)) {
       return NextResponse.json(
-        { error: "Missing deviceId." },
+        { error: "Missing deviceId or volume." },
         { status: 400 }
       );
     }
+    const volumePercent = Math.min(100, Math.max(0, Math.round(volume * 100)));
 
     const accessToken = await getValidAccessToken(sessionId);
     const response = await fetch(
-      `https://api.spotify.com/v1/me/player/play?device_id=${encodeURIComponent(
+      `https://api.spotify.com/v1/me/player/volume?device_id=${encodeURIComponent(
         deviceId
-      )}`,
+      )}&volume_percent=${volumePercent}`,
       {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json"
-        },
-        body: uri ? JSON.stringify({ uris: [uri] }) : undefined
+          Authorization: `Bearer ${accessToken}`
+        }
       }
     );
-    if (!response.ok) {
+    if (!response.ok && response.status !== 204) {
       const data = await response.json().catch(() => ({}));
-      throw new Error(data?.error?.message || "Failed to start playback.");
+      throw new Error(data?.error?.message || "Failed to update volume.");
     }
 
     const res = NextResponse.json(

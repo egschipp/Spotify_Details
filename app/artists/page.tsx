@@ -20,6 +20,21 @@ type ArtistOption = {
   name: string;
 };
 
+type PlaybackState = {
+  isPlaying: boolean;
+  progressMs: number;
+  durationMs: number;
+  track: {
+    id: string;
+    name: string;
+    artists: string[];
+    album: string;
+    albumArt: string | null;
+    uri: string | null;
+  } | null;
+  device: { id: string | null; name: string | null; type: string | null } | null;
+};
+
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
 
@@ -28,6 +43,10 @@ function formatDuration(ms: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 export default function ArtistsPage() {
@@ -48,8 +67,9 @@ export default function ArtistsPage() {
   const playerRef = useRef<HTMLDivElement | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
-  const [playerDeviceId, setPlayerDeviceId] = useState<string | null>(null);
   const [playerVolume, setPlayerVolume] = useState(0.8);
+  const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
+  const [seekValue, setSeekValue] = useState<number | null>(null);
   const [devices, setDevices] = useState<{ id: string; name: string; type: string; is_active: boolean }[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
@@ -135,6 +155,15 @@ export default function ArtistsPage() {
 
   useEffect(() => {
     if (!authStatus.authenticated) return;
+    void refreshPlaybackState();
+    const interval = window.setInterval(() => {
+      void refreshPlaybackState();
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [authStatus.authenticated, selectedDeviceId]);
+
+  useEffect(() => {
+    if (!authStatus.authenticated) return;
 
     let cancelled = false;
     function initializePlayer() {
@@ -163,7 +192,6 @@ export default function ArtistsPage() {
         volume: playerVolume
       });
       player.addListener("ready", ({ device_id }: { device_id: string }) => {
-        setPlayerDeviceId(device_id);
         setSelectedDeviceId(device_id);
         setPlayerReady(true);
         void refreshDevices();
@@ -323,18 +351,113 @@ export default function ArtistsPage() {
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to start playback.");
       }
+      await refreshPlaybackState();
     } catch (error) {
       setPlayerError((error as Error).message);
     }
   }
 
   async function changePlayerVolume(delta: number) {
+    if (!selectedDeviceId) return;
     const next = Math.min(1, Math.max(0, playerVolume + delta));
     setPlayerVolume(next);
     try {
-      await playerInstanceRef.current?.setVolume(next);
+      const res = await fetch(withBasePath("/api/spotify/player/volume"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: selectedDeviceId, volume: next })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to update volume.");
+      }
     } catch {
       // ignore SDK errors; UI will still reflect current value
+    }
+  }
+
+  async function refreshPlaybackState() {
+    if (!authStatus.authenticated) return;
+    try {
+      if (seekValue != null) return;
+      const res = await fetch(withBasePath("/api/spotify/player/state"));
+      if (res.status === 204) {
+        setPlaybackState(null);
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to fetch playback state.");
+      }
+      setPlaybackState(data.state ?? null);
+      if (data.state?.progressMs != null && data.state?.durationMs != null) {
+        setSeekValue(null);
+      }
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
+
+  async function togglePlayback() {
+    if (!selectedDeviceId) return;
+    const isPlaying = playbackState?.isPlaying ?? false;
+    const endpoint = isPlaying ? "/api/spotify/player/pause" : "/api/spotify/player/play";
+    if (!isPlaying && !selectedTrack?.uri && !playbackState?.track?.uri) {
+      setPlayerError("Select a track first to start playback.");
+      return;
+    }
+    try {
+      const res = await fetch(withBasePath(endpoint), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deviceId: selectedDeviceId,
+          uri: !isPlaying ? selectedTrack?.uri ?? playbackState?.track?.uri : undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to toggle playback.");
+      }
+      await refreshPlaybackState();
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
+
+  async function skipPlayback(direction: "next" | "previous") {
+    if (!selectedDeviceId) return;
+    try {
+      const res = await fetch(withBasePath(`/api/spotify/player/${direction}`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: selectedDeviceId })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to skip track.");
+      }
+      await refreshPlaybackState();
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
+
+  async function seekTo(positionMs: number) {
+    if (!selectedDeviceId) return;
+    try {
+      const res = await fetch(withBasePath("/api/spotify/player/seek"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: selectedDeviceId, positionMs })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to seek.");
+      }
+      await refreshPlaybackState();
+    } catch (error) {
+      setPlayerError((error as Error).message);
     }
   }
 
@@ -520,9 +643,11 @@ export default function ArtistsPage() {
                     Player
                   </p>
                   <p className="mt-2 text-sm text-white/70">
-                    {selectedTrack
-                      ? `Now playing: ${selectedTrack.name}`
-                      : "Select a track to start playback."}
+                    {playbackState?.track?.name
+                      ? `Now playing: ${playbackState.track.name}`
+                      : selectedTrack
+                        ? `Ready to play: ${selectedTrack.name}`
+                        : "Select a track to start playback."}
                   </p>
                 </div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/70">
@@ -541,24 +666,114 @@ export default function ArtistsPage() {
               )}
 
               <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/80">
-                  {selectedTrack ? (
-                    <iframe
-                      title={`Spotify player: ${selectedTrack.name}`}
-                      src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
-                      width="100%"
-                      height="180"
-                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                      loading="lazy"
-                      className="block w-full border-0 bg-black"
-                    />
-                  ) : (
-                    <div className="p-4">
-                      <p className="text-sm text-white/60">
-                        Choose a track and it will play on your selected device.
-                      </p>
+                <div className="rounded-2xl border border-white/10 bg-black/80 p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                    <div className="h-24 w-24 overflow-hidden rounded-2xl border border-white/10 bg-black/60">
+                      {playbackState?.track?.albumArt ? (
+                        <img
+                          src={playbackState.track.albumArt}
+                          alt={playbackState.track.album}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-white/40">
+                          No artwork
+                        </div>
+                      )}
                     </div>
-                  )}
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm font-semibold text-white">
+                          {playbackState?.track?.name ?? selectedTrack?.name ?? "No track selected"}
+                        </p>
+                        <p className="text-xs text-white/60">
+                          {playbackState?.track?.artists?.join(", ") ??
+                            selectedTrack?.artists?.map((artist) => artist.name).join(", ") ??
+                            "Choose a track to start playback."}
+                        </p>
+                        <p className="text-xs text-white/40">
+                          {playbackState?.track?.album ?? selectedTrack?.album?.name ?? ""}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => skipPlayback("previous")}
+                            className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/80 transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                          >
+                            Prev
+                          </button>
+                          <button
+                            type="button"
+                            onClick={togglePlayback}
+                            className="rounded-full border border-white/15 bg-tide/80 px-4 py-1 text-xs font-semibold text-black transition hover:bg-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                          >
+                            {playbackState?.isPlaying ? "Pause" : "Play"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => skipPlayback("next")}
+                            className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/80 transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                          >
+                            Next
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-[10px] text-white/50">
+                          <span>
+                            {formatDuration(
+                              seekValue ??
+                                playbackState?.progressMs ??
+                                0
+                            )}
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={playbackState?.durationMs ?? selectedTrack?.durationMs ?? 0}
+                            value={clamp(
+                              seekValue ??
+                                playbackState?.progressMs ??
+                                0,
+                              0,
+                              playbackState?.durationMs ?? selectedTrack?.durationMs ?? 0
+                            )}
+                            onChange={(event) => {
+                              setSeeking(true);
+                              setSeekValue(Number(event.target.value));
+                            }}
+                            onMouseUp={() => {
+                              if (seekValue != null) {
+                                void seekTo(seekValue);
+                              }
+                              setSeeking(false);
+                            }}
+                            onTouchEnd={() => {
+                              if (seekValue != null) {
+                                void seekTo(seekValue);
+                              }
+                              setSeeking(false);
+                            }}
+                            className="flex-1 accent-tide"
+                          />
+                          <span>
+                            {formatDuration(
+                              playbackState?.durationMs ??
+                                selectedTrack?.durationMs ??
+                                0
+                            )}
+                          </span>
+                        </div>
+                        {playbackState?.device?.name && (
+                          <p className="text-[10px] text-white/40">
+                            Active on {playbackState.device.name} ({playbackState.device.type})
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-black/70 p-4">
