@@ -27,6 +27,11 @@ type TrackOption = {
   artistNames: string;
 };
 
+type PlaylistOption = {
+  id: string;
+  name: string;
+};
+
 type PlaybackState = {
   isPlaying: boolean;
   progressMs: number;
@@ -66,7 +71,10 @@ export default function ArtistsPage() {
   const [artistOptions, setArtistOptions] = useState<ArtistOption[]>([]);
   const [artistId, setArtistId] = useState("");
   const [trackId, setTrackId] = useState("");
-  const [selectMode, setSelectMode] = useState<"artist" | "track">("artist");
+  const [selectMode, setSelectMode] = useState<"artist" | "track" | "playlist">(
+    "artist"
+  );
+  const [playlistId, setPlaylistId] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<TrackSummary | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
@@ -107,11 +115,17 @@ export default function ArtistsPage() {
       if (!trackId) return [];
       return tracks.filter((track) => track.id === trackId);
     }
+    if (selectMode === "playlist") {
+      if (!playlistId) return [];
+      return tracks.filter((track) =>
+        track.playlistRefs?.some((playlist) => playlist.id === playlistId)
+      );
+    }
     if (!artistId) return [];
     return tracks.filter((track) =>
       track.artists.some((artist) => artist.id === artistId)
     );
-  }, [tracks, artistId, trackId, selectMode]);
+  }, [tracks, artistId, trackId, playlistId, selectMode]);
 
   const trackOptions = useMemo<TrackOption[]>(() => {
     return tracks
@@ -127,13 +141,25 @@ export default function ArtistsPage() {
       });
   }, [tracks]);
 
+  const playlistOptions = useMemo<PlaylistOption[]>(() => {
+    const map = new Map<string, string>();
+    for (const track of tracks) {
+      for (const playlist of track.playlistRefs ?? []) {
+        map.set(playlist.id, playlist.name);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+  }, [tracks]);
+
   useEffect(() => {
     setSelectedTrack(null);
-  }, [artistId, trackId, selectMode]);
+  }, [artistId, trackId, playlistId, selectMode]);
 
   useEffect(() => {
     artistAnchorRef.current = {};
-  }, [artistOptions, trackOptions]);
+  }, [artistOptions, trackOptions, playlistOptions]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -310,10 +336,11 @@ export default function ArtistsPage() {
     }
   }
 
-  function handleModeChange(mode: "artist" | "track") {
+  function handleModeChange(mode: "artist" | "track" | "playlist") {
     setSelectMode(mode);
     setArtistId("");
     setTrackId("");
+    setPlaylistId("");
     setArtistSearch("");
     setMenuOpen(false);
   }
@@ -523,6 +550,17 @@ export default function ArtistsPage() {
       }
       return;
     }
+    if (selectMode === "playlist") {
+      const match = playlistOptions.find((playlist) =>
+        playlist.name.toLowerCase().includes(query)
+      );
+      if (!match) return;
+      const target = artistAnchorRef.current[match.id];
+      if (target) {
+        target.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+      return;
+    }
 
     const match = artistOptions.find((artist) =>
       artist.name.toLowerCase().includes(query)
@@ -576,6 +614,17 @@ export default function ArtistsPage() {
               >
                 Track
               </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("playlist")}
+                className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  selectMode === "playlist"
+                    ? "bg-tide text-black"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                Playlist
+              </button>
             </div>
 
             <div className="relative" ref={menuRef}>
@@ -596,10 +645,15 @@ export default function ArtistsPage() {
                         ? trackOptions.find((track) => track.id === trackId)?.name ??
                           "Select a track"
                         : "Select a track"
-                      : artistId
-                        ? artistOptions.find((artist) => artist.id === artistId)?.name ??
-                          "Select an artist"
-                        : "Select an artist"}
+                      : selectMode === "playlist"
+                        ? playlistId
+                          ? playlistOptions.find((playlist) => playlist.id === playlistId)
+                              ?.name ?? "Select a playlist"
+                          : "Select a playlist"
+                        : artistId
+                          ? artistOptions.find((artist) => artist.id === artistId)?.name ??
+                            "Select an artist"
+                          : "Select an artist"}
                 </span>
                 <span className="ml-3 text-white/60">
                   <svg
@@ -627,7 +681,9 @@ export default function ArtistsPage() {
                       placeholder={
                         selectMode === "track"
                           ? "Type to jump to a track..."
-                          : "Type to jump to an artist..."
+                          : selectMode === "playlist"
+                            ? "Type to jump to a playlist..."
+                            : "Type to jump to an artist..."
                       }
                       className="w-full rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                     />
@@ -639,6 +695,11 @@ export default function ArtistsPage() {
                     {selectMode === "track" && trackOptions.length === 0 && (
                       <div className="px-3 py-2 text-sm text-white/60">
                         No tracks available.
+                      </div>
+                    )}
+                    {selectMode === "playlist" && playlistOptions.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-white/60">
+                        No playlists available.
                       </div>
                     )}
                     {selectMode === "track" &&
@@ -671,6 +732,37 @@ export default function ArtistsPage() {
                             <span className="text-xs text-white/40">
                               {track.artistNames}
                             </span>
+                          </button>
+                        );
+                      })}
+
+                    {selectMode === "playlist" &&
+                      playlistOptions.map((playlist) => {
+                        const isSelected = playlist.id === playlistId;
+                        const anchorMap = artistAnchorRef.current;
+                        const setAnchor = (el: HTMLButtonElement | null) => {
+                          if (el) {
+                            anchorMap[playlist.id] = el;
+                          }
+                        };
+                        return (
+                          <button
+                            key={playlist.id}
+                            ref={setAnchor}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setPlaylistId(playlist.id);
+                              setMenuOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                              isSelected
+                                ? "bg-tide/20 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="truncate">{playlist.name}</span>
                           </button>
                         );
                       })}
@@ -729,9 +821,13 @@ export default function ArtistsPage() {
                   ? trackId
                     ? `${filteredTracks.length} track`
                     : "Select a track to view details"
-                  : artistId
-                    ? `${filteredTracks.length} tracks`
-                    : "Select an artist to view tracks"}
+                  : selectMode === "playlist"
+                    ? playlistId
+                      ? `${filteredTracks.length} tracks`
+                      : "Select a playlist to view tracks"
+                    : artistId
+                      ? `${filteredTracks.length} tracks`
+                      : "Select an artist to view tracks"}
               </span>
               <span className="flex items-center gap-3">
                 {updatedAt && (
@@ -1040,8 +1136,16 @@ export default function ArtistsPage() {
                       </td>
                     </tr>
                   )}
+                  {selectMode === "playlist" && !playlistId && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
+                        Choose a playlist to load tracks.
+                      </td>
+                    </tr>
+                  )}
                   {((selectMode === "artist" && artistId) ||
-                    (selectMode === "track" && trackId)) &&
+                    (selectMode === "track" && trackId) ||
+                    (selectMode === "playlist" && playlistId)) &&
                     filteredTracks.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
