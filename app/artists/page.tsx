@@ -185,8 +185,7 @@ export default function ArtistsPage() {
     const query = artistSearch.trim().toLowerCase();
     if (!query) return trackOptions;
     return trackOptions.filter((track) =>
-      track.name.toLowerCase().includes(query) ||
-      track.artistNames.toLowerCase().includes(query)
+      track.name.toLowerCase().includes(query)
     );
   }, [trackOptions, artistSearch]);
 
@@ -534,6 +533,16 @@ export default function ArtistsPage() {
       if (seekValue != null) return;
       const res = await fetch(withBasePath("/api/spotify/player/state"));
       if (res.status === 204) {
+        const prev = prevPlaybackRef.current;
+        if (
+          prev?.track?.id &&
+          prev.durationMs > 0 &&
+          prev.progressMs >= prev.durationMs - 1500 &&
+          lastAutoAdvanceIdRef.current !== prev.track.id
+        ) {
+          lastAutoAdvanceIdRef.current = prev.track.id;
+          void playAdjacentTrack("next");
+        }
         setPlaybackState(null);
         return;
       }
