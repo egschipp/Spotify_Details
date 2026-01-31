@@ -187,7 +187,13 @@ export default function CredentialsPage() {
       fetchWithDetails("Auth status", "/api/spotify/auth/status"),
       fetchWithDetails("Playlists", "/api/spotify/playlists?async=1"),
       fetchWithDetails("Now Playing", "/api/spotify/now-playing"),
-      fetchWithDetails("Playback state", "/api/spotify/player/state")
+      fetchWithDetails("Playback state", "/api/spotify/player/state"),
+      fetchWithDetails(
+        "Cache metrics",
+        `/api/debug/cache?token=${encodeURIComponent(
+          process.env.NEXT_PUBLIC_CACHE_DEBUG_TOKEN ?? ""
+        )}`
+      )
     ]);
 
     setConnectivityStatus({ running: false, results });

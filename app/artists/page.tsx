@@ -80,6 +80,9 @@ export default function ArtistsPage() {
   const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
     null
   );
+  const [cacheState, setCacheState] = useState<string | null>(null);
+  const [lastGoodAt, setLastGoodAt] = useState<string | null>(null);
+  const [refreshStartedAt, setRefreshStartedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const playerRef = useRef<HTMLDivElement | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
@@ -250,6 +253,9 @@ export default function ArtistsPage() {
         setArtistOptions(data.artists ?? []);
         setUpdatedAt(data.updatedAt ?? null);
         setSyncStatus(data.syncStatus ?? null);
+        setCacheState(data.state ?? null);
+        setLastGoodAt(data.lastGoodAt ?? null);
+        setRefreshStartedAt(data.refreshStartedAt ?? null);
       })
       .catch((error) => setErrorMessage((error as Error).message))
       .finally(() => setLoading(false));
@@ -968,6 +974,19 @@ export default function ArtistsPage() {
                 {updatedAt && (
                   <span className="text-xs text-white/50">
                     Updated {new Date(updatedAt).toLocaleString("en-US")}
+                  </span>
+                )}
+                {cacheState && (
+                  <span className="text-xs text-white/50">State: {cacheState}</span>
+                )}
+                {lastGoodAt && (
+                  <span className="text-xs text-white/50">
+                    Last good {new Date(lastGoodAt).toLocaleString("en-US")}
+                  </span>
+                )}
+                {refreshStartedAt && (
+                  <span className="text-xs text-white/50">
+                    Refreshing since {new Date(refreshStartedAt).toLocaleString("en-US")}
                   </span>
                 )}
                 {syncStatus && (

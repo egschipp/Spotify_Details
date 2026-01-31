@@ -31,6 +31,9 @@ export default function PlaylistsPage() {
     null
   );
   const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
+  const [cacheState, setCacheState] = useState<string | null>(null);
+  const [lastGoodAt, setLastGoodAt] = useState<string | null>(null);
+  const [refreshStartedAt, setRefreshStartedAt] = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const sortedPlaylists = useMemo(() => {
@@ -73,6 +76,9 @@ export default function PlaylistsPage() {
       setPlaylists(data.playlists ?? []);
       setSyncStatus(data.syncStatus ?? null);
       setCacheUpdatedAt(data.updatedAt ?? null);
+      setCacheState(data.state ?? null);
+      setLastGoodAt(data.lastGoodAt ?? null);
+      setRefreshStartedAt(data.refreshStartedAt ?? null);
       setSelectedPlaylistIds(new Set());
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -129,6 +135,9 @@ export default function PlaylistsPage() {
           setPlaylists(data.playlists ?? []);
           setSyncStatus(data.syncStatus ?? null);
           setCacheUpdatedAt(data.updatedAt ?? null);
+          setCacheState(data.state ?? null);
+          setLastGoodAt(data.lastGoodAt ?? null);
+          setRefreshStartedAt(data.refreshStartedAt ?? null);
           setSelectedPlaylistIds(new Set());
         })
         .catch((error) => setErrorMessage((error as Error).message));
@@ -222,6 +231,19 @@ export default function PlaylistsPage() {
             {cacheUpdatedAt && (
               <span className="text-xs text-white/40">
                 Updated {new Date(cacheUpdatedAt).toLocaleString("en-US")}
+              </span>
+            )}
+            {cacheState && (
+              <span className="text-xs text-white/40">State: {cacheState}</span>
+            )}
+            {lastGoodAt && (
+              <span className="text-xs text-white/40">
+                Last good {new Date(lastGoodAt).toLocaleString("en-US")}
+              </span>
+            )}
+            {refreshStartedAt && (
+              <span className="text-xs text-white/40">
+                Refreshing since {new Date(refreshStartedAt).toLocaleString("en-US")}
               </span>
             )}
           </div>
