@@ -514,7 +514,7 @@ export default function ArtistsPage() {
     if (!query) return;
     if (selectMode === "track") {
       const match = trackOptions.find((track) =>
-        track.name.toLowerCase().startsWith(query)
+        track.name.toLowerCase().includes(query)
       );
       if (!match) return;
       const target = artistAnchorRef.current[match.id];
@@ -525,7 +525,7 @@ export default function ArtistsPage() {
     }
 
     const match = artistOptions.find((artist) =>
-      artist.name.toLowerCase().startsWith(query)
+      artist.name.toLowerCase().includes(query)
     );
     if (!match) return;
     const target = artistAnchorRef.current[match.id];
