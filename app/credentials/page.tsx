@@ -134,9 +134,15 @@ export default function CredentialsPage() {
       options?: RequestInit
     ) {
       const start = Date.now();
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
       try {
-        const res = await fetch(withBasePath(path), options);
+        const res = await fetch(withBasePath(path), {
+          ...options,
+          signal: controller.signal
+        });
         const elapsedMs = Date.now() - start;
+        window.clearTimeout(timeout);
         if (!res.ok) {
           const contentType = res.headers.get("content-type") ?? "";
           let detail = "";
@@ -164,11 +170,15 @@ export default function CredentialsPage() {
         };
       } catch (error) {
         const elapsedMs = Date.now() - start;
+        window.clearTimeout(timeout);
         return {
           name,
           ok: false,
           elapsedMs,
-          error: (error as Error).message
+          error:
+            (error as Error).name === "AbortError"
+              ? "Request timed out after 15s."
+              : (error as Error).message
         };
       }
     }
