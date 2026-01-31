@@ -15,6 +15,10 @@ type PlaylistRow = {
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const withBasePath = (path: string) => (basePath ? `${basePath}${path}` : path);
+const withOrigin = (path: string) => {
+  if (typeof window === "undefined") return withBasePath(path);
+  return new URL(withBasePath(path), window.location.origin).toString();
+};
 
 export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<PlaylistRow[]>([]);
@@ -52,7 +56,7 @@ export default function PlaylistsPage() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(withBasePath("/api/spotify/playlists"));
+      const res = await fetch(withOrigin("/api/spotify/playlists"));
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 401) {
