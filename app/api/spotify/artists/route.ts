@@ -175,6 +175,7 @@ export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
   const url = new URL(req.url);
   const forceRefresh = url.searchParams.get("force") === "1";
+  const asyncMode = url.searchParams.get("async") === "1";
   const limit = rateLimit(`artists:${sessionId}`, {
     windowMs: 60_000,
     max: 4
@@ -234,11 +235,34 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
+    if (asyncMode && !forceRefresh) {
+      if (!refreshLocks.has(sessionId)) {
+        const refreshPromise = refreshArtistsCache(sessionId).finally(() => {
+          refreshLocks.delete(sessionId);
+        });
+        refreshLocks.set(sessionId, refreshPromise);
+      }
+      const res = NextResponse.json(
+        {
+          artists: [],
+          tracks: [],
+          updatedAt: new Date().toISOString(),
+          cacheStatus: "miss",
+          syncStatus: "syncing"
+        },
+        {
+          headers: rateLimitHeaders(limit.remaining, limit.resetAt)
+        }
+      );
+      attachSessionCookie(res, sessionId, isNew);
+      return res;
+    }
+
     const payload = await buildArtistsPayload(sessionId);
     const res = NextResponse.json(
       { ...payload, cacheStatus: "miss", syncStatus: "ok" },
       {
-      headers: rateLimitHeaders(limit.remaining, limit.resetAt)
+        headers: rateLimitHeaders(limit.remaining, limit.resetAt)
       }
     );
     attachSessionCookie(res, sessionId, isNew);

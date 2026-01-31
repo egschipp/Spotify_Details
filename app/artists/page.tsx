@@ -236,7 +236,7 @@ export default function ArtistsPage() {
     if (!authStatus.authenticated) return;
     setLoading(true);
     setErrorMessage(null);
-    fetch(withBasePath("/api/spotify/artists"), { method: "POST" })
+    fetch(withBasePath("/api/spotify/artists?async=1"), { method: "POST" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
@@ -254,6 +254,25 @@ export default function ArtistsPage() {
       .catch((error) => setErrorMessage((error as Error).message))
       .finally(() => setLoading(false));
   }, [authStatus.authenticated]);
+
+  useEffect(() => {
+    if (syncStatus !== "syncing") return;
+    const timer = window.setTimeout(() => {
+      fetch(withBasePath("/api/spotify/artists"), { method: "POST" })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error ?? "Failed to fetch artist data.");
+          }
+          setTracks(data.tracks ?? []);
+          setArtistOptions(data.artists ?? []);
+          setUpdatedAt(data.updatedAt ?? null);
+          setSyncStatus(data.syncStatus ?? null);
+        })
+        .catch((error) => setErrorMessage((error as Error).message));
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [syncStatus]);
 
   useEffect(() => {
     if (!authStatus.authenticated) return;
