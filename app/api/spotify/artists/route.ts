@@ -58,6 +58,7 @@ type ArtistsPayload = {
     spotifyUrl: string | null;
     durationMs: number;
     playlistNames: string[];
+    uri: string;
   }[];
   updatedAt: string;
   cacheStatus?: "fresh" | "stale" | "miss";
@@ -297,6 +298,7 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
     album: entry.track.album,
     spotifyUrl: entry.track.external_urls?.spotify ?? null,
     durationMs: entry.track.duration_ms,
+    uri: entry.track.uri,
     playlistNames: Array.from(entry.playlistNames)
       .filter((name): name is string => Boolean(name))
       .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))

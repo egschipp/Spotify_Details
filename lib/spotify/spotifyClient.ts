@@ -21,7 +21,7 @@ export function buildAuthorizeUrl(params: {
     code_challenge_method: "S256",
     code_challenge: params.codeChallenge,
     scope:
-      "playlist-read-private playlist-read-collaborative user-library-read user-read-currently-playing",
+      "playlist-read-private playlist-read-collaborative user-library-read user-read-currently-playing user-read-playback-state user-modify-playback-state streaming",
     state: params.state
   });
   return `${SPOTIFY_AUTH_URL}?${search.toString()}`;

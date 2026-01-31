@@ -12,6 +12,7 @@ type TrackSummary = {
   spotifyUrl: string | null;
   durationMs: number;
   playlistNames: string[];
+  uri: string;
 };
 
 type ArtistOption = {
@@ -45,6 +46,15 @@ export default function ArtistsPage() {
   );
   const [refreshing, setRefreshing] = useState(false);
   const playerRef = useRef<HTMLDivElement | null>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+  const [playerError, setPlayerError] = useState<string | null>(null);
+  const [playerDeviceId, setPlayerDeviceId] = useState<string | null>(null);
+  const [devices, setDevices] = useState<{ id: string; name: string; type: string; is_active: boolean }[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
+  const deviceMenuRef = useRef<HTMLDivElement | null>(null);
+  const deviceButtonRef = useRef<HTMLButtonElement | null>(null);
+  const playerInstanceRef = useRef<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -101,6 +111,102 @@ export default function ArtistsPage() {
       .finally(() => setLoading(false));
   }, [authStatus.authenticated]);
 
+  useEffect(() => {
+    if (!authStatus.authenticated) return;
+
+    let cancelled = false;
+    function initializePlayer() {
+      if (cancelled) return;
+      const Spotify = (window as any).Spotify;
+      if (!Spotify) {
+        setPlayerError("Spotify Web Playback SDK not available.");
+        return;
+      }
+      const player = new Spotify.Player({
+        name: "Spotify Details Web Player",
+        getOAuthToken: async (cb: (token: string) => void) => {
+          try {
+            const res = await fetch(withBasePath("/api/spotify/player/token"), {
+              method: "POST"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+              throw new Error(data.error ?? "Failed to load token.");
+            }
+            cb(data.accessToken);
+          } catch (error) {
+            setPlayerError((error as Error).message);
+          }
+        },
+        volume: 0.8
+      });
+      player.addListener("ready", ({ device_id }: { device_id: string }) => {
+        setPlayerDeviceId(device_id);
+        setSelectedDeviceId(device_id);
+        setPlayerReady(true);
+        void refreshDevices();
+      });
+      player.addListener("not_ready", () => {
+        setPlayerReady(false);
+      });
+      player.addListener("initialization_error", ({ message }: { message: string }) => {
+        setPlayerError(message);
+      });
+      player.addListener("authentication_error", ({ message }: { message: string }) => {
+        setPlayerError(message);
+      });
+      player.addListener("account_error", ({ message }: { message: string }) => {
+        setPlayerError(message);
+      });
+      player.connect();
+      playerInstanceRef.current = player;
+    }
+
+    if ((window as any).Spotify) {
+      initializePlayer();
+      return () => {
+        cancelled = true;
+        playerInstanceRef.current?.disconnect();
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://sdk.scdn.co/spotify-player.js";
+    script.async = true;
+    script.onload = () => initializePlayer();
+    document.body.appendChild(script);
+
+    return () => {
+      cancelled = true;
+      playerInstanceRef.current?.disconnect();
+      script.remove();
+    };
+  }, [authStatus.authenticated]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!deviceMenuOpen) return;
+      const target = event.target as Node;
+      if (deviceMenuRef.current && !deviceMenuRef.current.contains(target)) {
+        setDeviceMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setDeviceMenuOpen(false);
+        deviceButtonRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [deviceMenuOpen]);
+
   async function handleForceRefresh() {
     if (!authStatus.authenticated) return;
     setRefreshing(true);
@@ -148,6 +254,57 @@ export default function ArtistsPage() {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [menuOpen]);
+
+  async function refreshDevices() {
+    try {
+      const res = await fetch(withBasePath("/api/spotify/player/devices"));
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to load devices.");
+      }
+      setDevices(data.devices ?? []);
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
+
+  async function transferToDevice(deviceId: string) {
+    if (!deviceId) return;
+    try {
+      const res = await fetch(withBasePath("/api/spotify/player/transfer"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to transfer playback.");
+      }
+      setSelectedDeviceId(deviceId);
+      setPlayerError(null);
+      await refreshDevices();
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
+
+  async function playOnDevice(track: TrackSummary) {
+    const deviceId = selectedDeviceId ?? playerDeviceId;
+    if (!deviceId) return;
+    try {
+      const res = await fetch(withBasePath("/api/spotify/player/play"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId, uri: track.uri })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Failed to start playback.");
+      }
+    } catch (error) {
+      setPlayerError((error as Error).message);
+    }
+  }
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
@@ -289,25 +446,115 @@ export default function ArtistsPage() {
               ref={playerRef}
               className="rounded-2xl border border-white/10 bg-black/50 p-4"
             >
-              <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-                Player
-              </div>
-              <div className="mt-3">
-                {selectedTrack ? (
-                  <iframe
-                    title={`Spotify player: ${selectedTrack.name}`}
-                    src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
-                    width="100%"
-                    height="152"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    className="rounded-xl border border-white/10"
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                  Player
+                </div>
+                <div className="flex items-center gap-2 text-xs text-white/50">
+                  <span
+                    className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                      playerReady ? "bg-tide" : "bg-red-400"
+                    }`}
+                    aria-hidden="true"
                   />
-                ) : (
-                  <p className="text-sm text-white/60">
-                    Select a track to start playback.
+                  <span>{playerReady ? "Web player ready" : "Web player offline"}</span>
+                </div>
+              </div>
+              {playerError && (
+                <p className="mt-2 text-sm text-red-200">{playerError}</p>
+              )}
+              <div className="mt-3 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
+                <div>
+                  {selectedTrack ? (
+                    <iframe
+                      title={`Spotify player: ${selectedTrack.name}`}
+                      src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
+                      width="100%"
+                      height="152"
+                      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                      loading="lazy"
+                      className="rounded-xl border border-white/10"
+                    />
+                  ) : (
+                    <p className="text-sm text-white/60">
+                      Select a track to start playback.
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    Spotify Connect
                   </p>
-                )}
+                  <div className="relative" ref={deviceMenuRef}>
+                    <button
+                      type="button"
+                      ref={deviceButtonRef}
+                      onClick={() => setDeviceMenuOpen((prev) => !prev)}
+                      disabled={!devices.length}
+                      aria-haspopup="listbox"
+                      aria-expanded={deviceMenuOpen}
+                      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/70 px-4 py-2 text-left text-xs text-white shadow-card transition focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="truncate">
+                        {selectedDeviceId
+                          ? devices.find((device) => device.id === selectedDeviceId)?.name ??
+                            "Select device"
+                          : devices.length
+                            ? "Select device"
+                            : "No devices"}
+                      </span>
+                      <span className="ml-3 text-white/60">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className={`h-4 w-4 transition ${deviceMenuOpen ? "rotate-180" : ""}`}
+                          aria-hidden="true"
+                        >
+                          <path fill="currentColor" d="M7 10l5 5 5-5H7z" />
+                        </svg>
+                      </span>
+                    </button>
+                    {deviceMenuOpen && (
+                      <div
+                        role="listbox"
+                        aria-label="Spotify devices"
+                        className="absolute z-10 mt-2 max-h-60 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
+                      >
+                        {devices.map((device) => (
+                          <button
+                            key={device.id}
+                            type="button"
+                            role="option"
+                            aria-selected={device.id === selectedDeviceId}
+                            onClick={() => {
+                              setDeviceMenuOpen(false);
+                              void transferToDevice(device.id);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
+                              device.id === selectedDeviceId
+                                ? "bg-tide/20 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="truncate">{device.name}</span>
+                            <span className="text-[10px] text-white/50">
+                              {device.type}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshDevices}
+                    className="w-full rounded-full border border-white/15 bg-black/60 px-3 py-2 text-xs font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                  >
+                    Refresh devices
+                  </button>
+                  <p className="text-xs text-white/50">
+                    Select a device to play there via Spotify Connect.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -351,6 +598,7 @@ export default function ArtistsPage() {
                                 block: "center"
                               });
                             }, 50);
+                            void playOnDevice(track);
                           }}
                           className="text-left font-medium text-white transition hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                         >
