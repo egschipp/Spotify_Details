@@ -53,6 +53,13 @@ export default function ArtistsPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(false);
   const deviceMenuRef = useRef<HTMLDivElement | null>(null);
+
+  function formatPlayerError(message: string) {
+    if (message.includes("Invalid token scopes")) {
+      return "Spotify player needs extra permissions. Open Credentials and log in again.";
+    }
+    return message;
+  }
   const deviceButtonRef = useRef<HTMLButtonElement | null>(null);
   const playerInstanceRef = useRef<any>(null);
   const artistListRef = useRef<HTMLDivElement | null>(null);
@@ -150,7 +157,7 @@ export default function ArtistsPage() {
             }
             cb(data.accessToken);
           } catch (error) {
-            setPlayerError((error as Error).message);
+            setPlayerError(formatPlayerError((error as Error).message));
           }
         },
         volume: 0.8
@@ -165,13 +172,13 @@ export default function ArtistsPage() {
         setPlayerReady(false);
       });
       player.addListener("initialization_error", ({ message }: { message: string }) => {
-        setPlayerError(message);
+        setPlayerError(formatPlayerError(message));
       });
       player.addListener("authentication_error", ({ message }: { message: string }) => {
-        setPlayerError(message);
+        setPlayerError(formatPlayerError(message));
       });
       player.addListener("account_error", ({ message }: { message: string }) => {
-        setPlayerError(message);
+        setPlayerError(formatPlayerError(message));
       });
       player.connect();
       playerInstanceRef.current = player;
@@ -492,13 +499,20 @@ export default function ArtistsPage() {
 
             <div
               ref={playerRef}
-              className="rounded-2xl border border-white/10 bg-black/50 p-4"
+              className="rounded-2xl border border-white/10 bg-black/50 p-5 shadow-card"
             >
-              <div className="flex items-center justify-between">
-                <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  Player
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                    Player
+                  </p>
+                  <p className="mt-2 text-sm text-white/70">
+                    {selectedTrack
+                      ? `Now playing: ${selectedTrack.name}`
+                      : "Select a track to start playback."}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-white/50">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/70">
                   <span
                     className={`inline-flex h-2.5 w-2.5 rounded-full ${
                       playerReady ? "bg-tide" : "bg-red-400"
@@ -508,11 +522,13 @@ export default function ArtistsPage() {
                   <span>{playerReady ? "Web player ready" : "Web player offline"}</span>
                 </div>
               </div>
+
               {playerError && (
-                <p className="mt-2 text-sm text-red-200">{playerError}</p>
+                <p className="mt-3 text-sm text-red-200">{playerError}</p>
               )}
-              <div className="mt-3 grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-                <div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-2xl border border-white/10 bg-black/70 p-3">
                   {selectedTrack ? (
                     <iframe
                       title={`Spotify player: ${selectedTrack.name}`}
@@ -521,19 +537,29 @@ export default function ArtistsPage() {
                       height="152"
                       allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                       loading="lazy"
-                      className="rounded-xl border border-white/10"
+                      className="rounded-xl border border-white/10 bg-black"
                     />
                   ) : (
                     <p className="text-sm text-white/60">
-                      Select a track to start playback.
+                      Choose a track and it will play on your selected device.
                     </p>
                   )}
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-                    Spotify Connect
-                  </p>
-                  <div className="relative" ref={deviceMenuRef}>
+
+                <div className="rounded-2xl border border-white/10 bg-black/70 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                      Spotify Connect
+                    </p>
+                    <button
+                      type="button"
+                      onClick={refreshDevices}
+                      className="rounded-full border border-white/15 bg-black/60 px-3 py-1 text-[10px] font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  <div className="relative mt-3" ref={deviceMenuRef}>
                     <button
                       type="button"
                       ref={deviceButtonRef}
@@ -541,7 +567,7 @@ export default function ArtistsPage() {
                       disabled={!devices.length}
                       aria-haspopup="listbox"
                       aria-expanded={deviceMenuOpen}
-                      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/70 px-4 py-2 text-left text-xs text-white shadow-card transition focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/80 px-4 py-2 text-left text-xs text-white shadow-card transition focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <span className="truncate">
                         {selectedDeviceId
@@ -592,15 +618,8 @@ export default function ArtistsPage() {
                       </div>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={refreshDevices}
-                    className="w-full rounded-full border border-white/15 bg-black/60 px-3 py-2 text-xs font-semibold text-white/80 transition hover:border-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                  >
-                    Refresh devices
-                  </button>
-                  <p className="text-xs text-white/50">
-                    Select a device to play there via Spotify Connect.
+                  <p className="mt-3 text-xs text-white/50">
+                    Playback goes to the selected Spotify Connect device.
                   </p>
                 </div>
               </div>
