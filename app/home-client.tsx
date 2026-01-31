@@ -314,6 +314,20 @@ export default function HomePageClient() {
   }, [isIndeterminate]);
 
   useEffect(() => {
+    if (!authStatus.authenticated) {
+      return;
+    }
+    if (!playlistId) {
+      setTracks(emptyTracks);
+      setSelectedTrackIds(new Set());
+      setStatusMessage(null);
+      return;
+    }
+    void handleFetchPlaylist();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playlistId, authStatus.authenticated]);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!playlistMenuOpen) return;
       const target = event.target as Node;
@@ -583,18 +597,6 @@ export default function HomePageClient() {
                 )}
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="primary"
-                  onClick={handleFetchPlaylist}
-                  disabled={
-                    !authStatus.authenticated ||
-                    loading ||
-                    loadingLiked ||
-                    !playlistId
-                  }
-                >
-                  Load playlist
-                </Button>
                 <Button
                   variant="secondary"
                   onClick={handleFetchLiked}
