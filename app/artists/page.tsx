@@ -21,6 +21,12 @@ type ArtistOption = {
   name: string;
 };
 
+type TrackOption = {
+  id: string;
+  name: string;
+  artistNames: string;
+};
+
 type PlaybackState = {
   isPlaying: boolean;
   progressMs: number;
@@ -59,6 +65,8 @@ export default function ArtistsPage() {
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
   const [artistOptions, setArtistOptions] = useState<ArtistOption[]>([]);
   const [artistId, setArtistId] = useState("");
+  const [trackId, setTrackId] = useState("");
+  const [selectMode, setSelectMode] = useState<"artist" | "track">("artist");
   const [selectedTrack, setSelectedTrack] = useState<TrackSummary | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
@@ -68,6 +76,7 @@ export default function ArtistsPage() {
   const playerRef = useRef<HTMLDivElement | null>(null);
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [playerDeviceId, setPlayerDeviceId] = useState<string | null>(null);
   const [playerVolume, setPlayerVolume] = useState(0.8);
   const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
   const [seekValue, setSeekValue] = useState<number | null>(null);
@@ -94,19 +103,37 @@ export default function ArtistsPage() {
   const router = useRouter();
 
   const filteredTracks = useMemo(() => {
+    if (selectMode === "track") {
+      if (!trackId) return [];
+      return tracks.filter((track) => track.id === trackId);
+    }
     if (!artistId) return [];
     return tracks.filter((track) =>
       track.artists.some((artist) => artist.id === artistId)
     );
-  }, [tracks, artistId]);
+  }, [tracks, artistId, trackId, selectMode]);
+
+  const trackOptions = useMemo<TrackOption[]>(() => {
+    return tracks
+      .map((track) => ({
+        id: track.id,
+        name: track.name,
+        artistNames: track.artists.map((artist) => artist.name).join(", ")
+      }))
+      .sort((a, b) => {
+        const byName = a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+        if (byName !== 0) return byName;
+        return a.artistNames.localeCompare(b.artistNames, "en", { sensitivity: "base" });
+      });
+  }, [tracks]);
 
   useEffect(() => {
     setSelectedTrack(null);
-  }, [artistId]);
+  }, [artistId, trackId, selectMode]);
 
   useEffect(() => {
     artistAnchorRef.current = {};
-  }, [artistOptions]);
+  }, [artistOptions, trackOptions]);
 
   useEffect(() => {
     if (menuOpen) {
@@ -193,6 +220,7 @@ export default function ArtistsPage() {
         volume: playerVolume
       });
       player.addListener("ready", ({ device_id }: { device_id: string }) => {
+        setPlayerDeviceId(device_id);
         setSelectedDeviceId(device_id);
         setPlayerReady(true);
         void refreshDevices();
@@ -280,6 +308,14 @@ export default function ArtistsPage() {
     } finally {
       setRefreshing(false);
     }
+  }
+
+  function handleModeChange(mode: "artist" | "track") {
+    setSelectMode(mode);
+    setArtistId("");
+    setTrackId("");
+    setArtistSearch("");
+    setMenuOpen(false);
   }
 
   useEffect(() => {
@@ -429,6 +465,16 @@ export default function ArtistsPage() {
   async function skipPlayback(direction: "next" | "previous") {
     if (!selectedDeviceId) return;
     try {
+      if (playerDeviceId && selectedDeviceId === playerDeviceId) {
+        if (direction === "next") {
+          await playerInstanceRef.current?.nextTrack?.();
+        } else {
+          await playerInstanceRef.current?.previousTrack?.();
+        }
+        await refreshPlaybackState();
+        return;
+      }
+
       const res = await fetch(withBasePath(`/api/spotify/player/${direction}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -466,6 +512,18 @@ export default function ArtistsPage() {
     setArtistSearch(value);
     const query = value.trim().toLowerCase();
     if (!query) return;
+    if (selectMode === "track") {
+      const match = trackOptions.find((track) =>
+        track.name.toLowerCase().startsWith(query)
+      );
+      if (!match) return;
+      const target = artistAnchorRef.current[match.id];
+      if (target) {
+        target.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+      return;
+    }
+
     const match = artistOptions.find((artist) =>
       artist.name.toLowerCase().startsWith(query)
     );
@@ -488,11 +546,36 @@ export default function ArtistsPage() {
           <div className="space-y-4">
             <div>
               <h2 className="font-display text-2xl font-semibold">
-                Select an artist
+                Select a {selectMode}
               </h2>
               <p className="text-sm text-white/60">
                 Alphabetical list from all playlists and liked songs.
               </p>
+            </div>
+
+            <div className="flex w-full items-center gap-2 rounded-full border border-white/10 bg-black/60 p-1 text-xs text-white/70">
+              <button
+                type="button"
+                onClick={() => handleModeChange("artist")}
+                className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  selectMode === "artist"
+                    ? "bg-tide text-black"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                Artist
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("track")}
+                className={`flex-1 rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  selectMode === "track"
+                    ? "bg-tide text-black"
+                    : "text-white/70 hover:text-white"
+                }`}
+              >
+                Track
+              </button>
             </div>
 
             <div className="relative" ref={menuRef}>
@@ -508,10 +591,15 @@ export default function ArtistsPage() {
                 <span className="truncate">
                   {loading
                     ? "Loading artists..."
-                    : artistId
-                      ? artistOptions.find((artist) => artist.id === artistId)?.name ??
-                        "Select an artist"
-                      : "Select an artist"}
+                    : selectMode === "track"
+                      ? trackId
+                        ? trackOptions.find((track) => track.id === trackId)?.name ??
+                          "Select a track"
+                        : "Select a track"
+                      : artistId
+                        ? artistOptions.find((artist) => artist.id === artistId)?.name ??
+                          "Select an artist"
+                        : "Select an artist"}
                 </span>
                 <span className="ml-3 text-white/60">
                   <svg
@@ -536,7 +624,11 @@ export default function ArtistsPage() {
                       type="text"
                       value={artistSearch}
                       onChange={(event) => handleArtistSearch(event.target.value)}
-                      placeholder="Type to jump to an artist..."
+                      placeholder={
+                        selectMode === "track"
+                          ? "Type to jump to a track..."
+                          : "Type to jump to an artist..."
+                      }
                       className="w-full rounded-xl border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                     />
                   </div>
@@ -544,40 +636,80 @@ export default function ArtistsPage() {
                     ref={artistListRef}
                     className="max-h-72 overflow-auto px-2 pb-2"
                   >
-                    {artistOptions.length === 0 && (
+                    {selectMode === "track" && trackOptions.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-white/60">
+                        No tracks available.
+                      </div>
+                    )}
+                    {selectMode === "track" &&
+                      trackOptions.map((track) => {
+                        const isSelected = track.id === trackId;
+                        const anchorMap = artistAnchorRef.current;
+                        const setAnchor = (el: HTMLButtonElement | null) => {
+                          if (el) {
+                            anchorMap[track.id] = el;
+                          }
+                        };
+                        return (
+                          <button
+                            key={track.id}
+                            ref={setAnchor}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setTrackId(track.id);
+                              setMenuOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                              isSelected
+                                ? "bg-tide/20 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="truncate">{track.name}</span>
+                            <span className="text-xs text-white/40">
+                              {track.artistNames}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                    {selectMode === "artist" && artistOptions.length === 0 && (
                       <div className="px-3 py-2 text-sm text-white/60">
                         No artists available.
                       </div>
                     )}
-                    {artistOptions.map((artist) => {
-                      const isSelected = artist.id === artistId;
-                      const anchorMap = artistAnchorRef.current;
-                      const setAnchor = (el: HTMLButtonElement | null) => {
-                        if (el) {
-                          anchorMap[artist.id] = el;
-                        }
-                      };
-                      return (
-                        <button
-                          key={artist.id}
-                          ref={setAnchor}
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          onClick={() => {
-                            setArtistId(artist.id);
-                            setMenuOpen(false);
-                          }}
-                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                            isSelected
-                              ? "bg-tide/20 text-white"
-                              : "text-white/80 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="truncate">{artist.name}</span>
-                        </button>
-                      );
-                    })}
+                    {selectMode === "artist" &&
+                      artistOptions.map((artist) => {
+                        const isSelected = artist.id === artistId;
+                        const anchorMap = artistAnchorRef.current;
+                        const setAnchor = (el: HTMLButtonElement | null) => {
+                          if (el) {
+                            anchorMap[artist.id] = el;
+                          }
+                        };
+                        return (
+                          <button
+                            key={artist.id}
+                            ref={setAnchor}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setArtistId(artist.id);
+                              setMenuOpen(false);
+                            }}
+                            className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                              isSelected
+                                ? "bg-tide/20 text-white"
+                                : "text-white/80 hover:bg-white/5"
+                            }`}
+                          >
+                            <span className="truncate">{artist.name}</span>
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -593,9 +725,13 @@ export default function ArtistsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm text-white/60">
               <span>
-                {artistId
-                  ? `${filteredTracks.length} tracks`
-                  : "Select an artist to view tracks"}
+                {selectMode === "track"
+                  ? trackId
+                    ? `${filteredTracks.length} track`
+                    : "Select a track to view details"
+                  : artistId
+                    ? `${filteredTracks.length} tracks`
+                    : "Select an artist to view tracks"}
               </span>
               <span className="flex items-center gap-3">
                 {updatedAt && (
@@ -882,6 +1018,7 @@ export default function ArtistsPage() {
                 <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
                   <tr>
                     <th scope="col" className="px-4 py-3">Track</th>
+                    <th scope="col" className="px-4 py-3">Artists</th>
                     <th scope="col" className="px-4 py-3">Album</th>
                     <th scope="col" className="px-4 py-3">Duration</th>
                     <th scope="col" className="px-4 py-3">Playlists</th>
@@ -889,20 +1026,29 @@ export default function ArtistsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!artistId && (
+                  {selectMode === "artist" && !artistId && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
                         Choose an artist to load tracks.
                       </td>
                     </tr>
                   )}
-                  {artistId && filteredTracks.length === 0 && (
+                  {selectMode === "track" && !trackId && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-white/50">
-                        No saved tracks found for this artist.
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
+                        Choose a track to load details.
                       </td>
                     </tr>
                   )}
+                  {((selectMode === "artist" && artistId) ||
+                    (selectMode === "track" && trackId)) &&
+                    filteredTracks.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-6 text-center text-sm text-white/50">
+                          No saved tracks found.
+                        </td>
+                      </tr>
+                    )}
                   {filteredTracks.map((track) => (
                     <tr key={track.id} className="border-t border-white/5 hover:bg-white/5">
                       <td className="px-4 py-3">
@@ -936,6 +1082,9 @@ export default function ArtistsPage() {
                             {track.name}
                           </span>
                         </button>
+                      </td>
+                      <td className="px-4 py-3 text-white/70">
+                        {track.artists.map((artist) => artist.name).join(", ")}
                       </td>
                       <td className="px-4 py-3 text-white/70">{track.album.name}</td>
                       <td className="px-4 py-3 text-white/60">
