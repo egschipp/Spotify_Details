@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
-import { getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
+import { getSpotifyUserId, getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
 import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 
 type SpotifyPlaylist = {
   id: string;
@@ -64,11 +65,17 @@ type ArtistsPayload = {
   updatedAt: string;
   cacheStatus?: "fresh" | "stale" | "miss";
   syncStatus?: "ok" | "syncing" | "error";
+  state?: "ok" | "stale" | "refreshing" | "error";
+  lastGoodAt?: string;
+  refreshStartedAt?: string;
+  errorCode?: string;
+  retryAfterMs?: number;
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const artistsCache = new Map<string, { expiresAt: number; payload: ArtistsPayload }>();
 const refreshLocks = new Map<string, Promise<void>>();
+const CACHE_VERSION = 1;
 const MAX_RETRIES = 3;
 const RETRY_FALLBACK_MS = 1500;
 const CACHE_FOLDER = "cache";
@@ -82,22 +89,47 @@ function getCacheDir() {
   return path.join(base, CACHE_FOLDER);
 }
 
-function getCachePath(sessionId: string) {
-  return path.join(getCacheDir(), `artists-${sessionId}.json`);
+function getCachePath(cacheKey: string) {
+  return path.join(getCacheDir(), `artists-${cacheKey}.json`);
 }
 
-async function readCache(sessionId: string): Promise<ArtistsPayload | null> {
+async function readCache(cacheKey: string): Promise<ArtistsPayload | null> {
   try {
-    const data = await fs.readFile(getCachePath(sessionId), "utf8");
-    return JSON.parse(data) as ArtistsPayload;
+    const data = await fs.readFile(getCachePath(cacheKey), "utf8");
+    const parsed = JSON.parse(data);
+    if (parsed?.payload) {
+      const payload = parsed.payload as ArtistsPayload;
+      const checksum = crypto
+        .createHash("sha256")
+        .update(JSON.stringify(payload))
+        .digest("hex");
+      if (parsed.checksum && parsed.checksum !== checksum) {
+        return null;
+      }
+      return payload;
+    }
+    return parsed as ArtistsPayload;
   } catch {
     return null;
   }
 }
 
-async function writeCache(sessionId: string, payload: ArtistsPayload) {
+async function writeCache(cacheKey: string, payload: ArtistsPayload) {
   await fs.mkdir(getCacheDir(), { recursive: true });
-  await fs.writeFile(getCachePath(sessionId), JSON.stringify(payload), "utf8");
+  const checksum = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(payload))
+    .digest("hex");
+  const envelope = {
+    version: CACHE_VERSION,
+    updatedAt: payload.updatedAt,
+    checksum,
+    payload
+  };
+  const target = getCachePath(cacheKey);
+  const tmp = `${target}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(envelope), "utf8");
+  await fs.rename(tmp, target);
 }
 
 async function spotifyFetchWithRetry(
@@ -173,6 +205,7 @@ async function fetchAllLikedTracks(accessToken: string): Promise<SpotifyTrack[]>
 
 export async function POST(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const cacheKey = await getSpotifyUserId(sessionId);
   const url = new URL(req.url);
   const forceRefresh = url.searchParams.get("force") === "1";
   const asyncMode = url.searchParams.get("async") === "1";
@@ -188,7 +221,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const diskCache = await readCache(sessionId);
+    const diskCache = await readCache(cacheKey);
     if (diskCache) {
       const updatedAt = new Date(diskCache.updatedAt).getTime();
       const isFresh = Date.now() - updatedAt < CACHE_TTL_MS;
@@ -202,15 +235,21 @@ export async function POST(req: NextRequest) {
         attachSessionCookie(res, sessionId, isNew);
         return res;
       }
-      if (!refreshLocks.has(sessionId)) {
-        const refreshPromise = refreshArtistsCache(sessionId).finally(() => {
-          refreshLocks.delete(sessionId);
+      if (!refreshLocks.has(cacheKey)) {
+        const refreshPromise = refreshArtistsCache(cacheKey, sessionId).finally(() => {
+          refreshLocks.delete(cacheKey);
         });
-        refreshLocks.set(sessionId, refreshPromise);
+        refreshLocks.set(cacheKey, refreshPromise);
       }
       if (!forceRefresh) {
         const res = NextResponse.json(
-          { ...diskCache, cacheStatus: "stale", syncStatus: "syncing" },
+          {
+            ...diskCache,
+            cacheStatus: "stale",
+            syncStatus: "syncing",
+            state: "stale",
+            refreshStartedAt: new Date().toISOString()
+          },
           {
             headers: {
               ...rateLimitHeaders(limit.remaining, limit.resetAt),
@@ -223,7 +262,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const cached = artistsCache.get(sessionId);
+    const cached = artistsCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       const res = NextResponse.json(cached.payload, {
         headers: {
@@ -236,11 +275,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (asyncMode && !forceRefresh) {
-      if (!refreshLocks.has(sessionId)) {
-        const refreshPromise = refreshArtistsCache(sessionId).finally(() => {
-          refreshLocks.delete(sessionId);
+      if (!refreshLocks.has(cacheKey)) {
+        const refreshPromise = refreshArtistsCache(cacheKey, sessionId).finally(() => {
+          refreshLocks.delete(cacheKey);
         });
-        refreshLocks.set(sessionId, refreshPromise);
+        refreshLocks.set(cacheKey, refreshPromise);
       }
       const res = NextResponse.json(
         {
@@ -248,7 +287,9 @@ export async function POST(req: NextRequest) {
           tracks: [],
           updatedAt: new Date().toISOString(),
           cacheStatus: "miss",
-          syncStatus: "syncing"
+          syncStatus: "syncing",
+          state: "refreshing",
+          refreshStartedAt: new Date().toISOString()
         },
         {
           headers: rateLimitHeaders(limit.remaining, limit.resetAt)
@@ -260,11 +301,26 @@ export async function POST(req: NextRequest) {
 
     const payload = await buildArtistsPayload(sessionId);
     const res = NextResponse.json(
-      { ...payload, cacheStatus: "miss", syncStatus: "ok" },
+      {
+        ...payload,
+        cacheStatus: "miss",
+        syncStatus: "ok",
+        state: "ok",
+        lastGoodAt: payload.updatedAt
+      },
       {
         headers: rateLimitHeaders(limit.remaining, limit.resetAt)
       }
     );
+    artistsCache.set(cacheKey, {
+      payload: { ...payload, state: "ok", lastGoodAt: payload.updatedAt },
+      expiresAt: Date.now() + CACHE_TTL_MS
+    });
+    await writeCache(cacheKey, {
+      ...payload,
+      state: "ok",
+      lastGoodAt: payload.updatedAt
+    });
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {
@@ -274,7 +330,15 @@ export async function POST(req: NextRequest) {
       : message.includes("credentials")
         ? 400
         : 500;
-    const res = NextResponse.json({ error: message, syncStatus: "error" }, { status });
+    const res = NextResponse.json(
+      {
+        error: message,
+        syncStatus: "error",
+        state: "error",
+        errorCode: status === 429 ? "rate_limit" : "error"
+      },
+      { status }
+    );
     attachSessionCookie(res, sessionId, isNew);
     return res;
   }
@@ -361,15 +425,28 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
     tracks,
     updatedAt: new Date().toISOString()
   };
-  artistsCache.set(sessionId, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
-  await writeCache(sessionId, payload);
+  const cacheKey = await getSpotifyUserId(sessionId);
+  artistsCache.set(cacheKey, { payload, expiresAt: Date.now() + CACHE_TTL_MS });
+  await writeCache(cacheKey, payload);
   return payload;
 }
 
-async function refreshArtistsCache(sessionId: string) {
+async function refreshArtistsCache(cacheKey: string, sessionId: string) {
   try {
     await buildArtistsPayload(sessionId);
   } catch {
-    // Best-effort background refresh; ignore errors to keep serving stale cache.
+    const payload: ArtistsPayload = {
+      artists: [],
+      tracks: [],
+      updatedAt: new Date().toISOString(),
+      cacheStatus: "stale",
+      syncStatus: "error",
+      state: "error"
+    };
+    artistsCache.set(cacheKey, {
+      payload,
+      expiresAt: Date.now() + CACHE_TTL_MS
+    });
+    await writeCache(cacheKey, payload);
   }
 }

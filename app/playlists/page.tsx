@@ -30,6 +30,7 @@ export default function PlaylistsPage() {
   const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
     null
   );
+  const [cacheUpdatedAt, setCacheUpdatedAt] = useState<string | null>(null);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const sortedPlaylists = useMemo(() => {
@@ -71,6 +72,7 @@ export default function PlaylistsPage() {
       }
       setPlaylists(data.playlists ?? []);
       setSyncStatus(data.syncStatus ?? null);
+      setCacheUpdatedAt(data.updatedAt ?? null);
       setSelectedPlaylistIds(new Set());
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -126,6 +128,7 @@ export default function PlaylistsPage() {
           }
           setPlaylists(data.playlists ?? []);
           setSyncStatus(data.syncStatus ?? null);
+          setCacheUpdatedAt(data.updatedAt ?? null);
           setSelectedPlaylistIds(new Set());
         })
         .catch((error) => setErrorMessage((error as Error).message));
@@ -198,6 +201,16 @@ export default function PlaylistsPage() {
             {errorMessage}
           </div>
         )}
+        {syncStatus === "syncing" && (
+          <div className="rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white/60">
+            Building your playlists cache. This can take a minute on first run.
+          </div>
+        )}
+        {syncStatus === "error" && (
+          <div className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            Playlist sync failed. Try refresh or check your Spotify connection.
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-white/60">
@@ -206,6 +219,11 @@ export default function PlaylistsPage() {
                 ? "Loading playlists..."
                 : `${sortedPlaylists.length} playlists`}
             </span>
+            {cacheUpdatedAt && (
+              <span className="text-xs text-white/40">
+                Updated {new Date(cacheUpdatedAt).toLocaleString("en-US")}
+              </span>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">

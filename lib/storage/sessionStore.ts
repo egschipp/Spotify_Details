@@ -8,6 +8,7 @@ export type SessionRecord = {
   codeVerifier?: string;
   authState?: string;
   returnTo?: string;
+  spotifyUserId?: string;
 };
 
 type StoredSessionRecord = {
@@ -17,6 +18,7 @@ type StoredSessionRecord = {
   codeVerifier?: EncryptedPayload | string;
   authState?: EncryptedPayload | string;
   returnTo?: EncryptedPayload | string;
+  spotifyUserId?: EncryptedPayload | string;
 };
 
 type SessionMap = Record<string, StoredSessionRecord>;
@@ -35,7 +37,8 @@ export async function getSession(sessionId: string): Promise<SessionRecord> {
     expiresAt: stored.expiresAt,
     codeVerifier: decryptMaybe(stored.codeVerifier),
     authState: decryptMaybe(stored.authState),
-    returnTo: decryptMaybe(stored.returnTo)
+    returnTo: decryptMaybe(stored.returnTo),
+    spotifyUserId: decryptMaybe(stored.spotifyUserId)
   };
 }
 
@@ -55,7 +58,8 @@ export async function setSession(
     refreshToken: encryptMaybe(next.refreshToken),
     codeVerifier: encryptMaybe(next.codeVerifier),
     authState: encryptMaybe(next.authState),
-    returnTo: encryptMaybe(next.returnTo)
+    returnTo: encryptMaybe(next.returnTo),
+    spotifyUserId: encryptMaybe(next.spotifyUserId)
   };
   await writeJsonFile(FILE_NAME, sessions);
 }

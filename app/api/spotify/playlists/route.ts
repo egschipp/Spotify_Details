@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachSessionCookie, getSessionId } from "@/lib/storage/sessionCookie";
-import { getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
+import { getSpotifyUserId, getValidAccessToken, spotifyFetch } from "@/lib/spotify/spotifyClient";
 import { clearSession } from "@/lib/storage/sessionStore";
 import { rateLimit, rateLimitHeaders } from "@/lib/security/rateLimit";
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 
 type SpotifyPlaylistItem = {
   id: string;
@@ -26,6 +27,7 @@ const RETRY_FALLBACK_MS = 1500;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const playlistsCache = new Map<string, { expiresAt: number; payload: any }>();
 const refreshLocks = new Map<string, Promise<void>>();
+const CACHE_VERSION = 1;
 const CACHE_FOLDER = "cache";
 
 async function sleep(ms: number) {
@@ -37,22 +39,46 @@ function getCacheDir() {
   return path.join(base, CACHE_FOLDER);
 }
 
-function getCachePath(sessionId: string) {
-  return path.join(getCacheDir(), `playlists-${sessionId}.json`);
+function getCachePath(cacheKey: string) {
+  return path.join(getCacheDir(), `playlists-${cacheKey}.json`);
 }
 
-async function readCache(sessionId: string): Promise<any | null> {
+async function readCache(cacheKey: string): Promise<any | null> {
   try {
-    const data = await fs.readFile(getCachePath(sessionId), "utf8");
-    return JSON.parse(data);
+    const data = await fs.readFile(getCachePath(cacheKey), "utf8");
+    const parsed = JSON.parse(data);
+    if (parsed?.payload) {
+      const checksum = crypto
+        .createHash("sha256")
+        .update(JSON.stringify(parsed.payload))
+        .digest("hex");
+      if (parsed.checksum && parsed.checksum !== checksum) {
+        return null;
+      }
+      return parsed.payload;
+    }
+    return parsed;
   } catch {
     return null;
   }
 }
 
-async function writeCache(sessionId: string, payload: any) {
+async function writeCache(cacheKey: string, payload: any) {
   await fs.mkdir(getCacheDir(), { recursive: true });
-  await fs.writeFile(getCachePath(sessionId), JSON.stringify(payload), "utf8");
+  const checksum = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(payload))
+    .digest("hex");
+  const envelope = {
+    version: CACHE_VERSION,
+    updatedAt: payload.updatedAt,
+    checksum,
+    payload
+  };
+  const target = getCachePath(cacheKey);
+  const tmp = `${target}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(envelope), "utf8");
+  await fs.rename(tmp, target);
 }
 
 async function spotifyFetchWithRetry(path: string, accessToken: string) {
@@ -96,6 +122,7 @@ async function fetchAllPlaylists(accessToken: string) {
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  const cacheKey = await getSpotifyUserId(sessionId);
   const url = new URL(req.url);
   const asyncMode = url.searchParams.get("async") === "1";
   const limit = rateLimit(`playlists:${sessionId}`, {
@@ -109,7 +136,7 @@ export async function GET(req: NextRequest) {
     );
   }
   try {
-    const diskCache = await readCache(sessionId);
+    const diskCache = await readCache(cacheKey);
     if (diskCache) {
       const updatedAt = new Date(diskCache.updatedAt).getTime();
       const isFresh = Date.now() - updatedAt < CACHE_TTL_MS;
@@ -123,14 +150,20 @@ export async function GET(req: NextRequest) {
         attachSessionCookie(res, sessionId, isNew);
         return res;
       }
-      if (!refreshLocks.has(sessionId)) {
-        const refreshPromise = refreshPlaylistsCache(sessionId).finally(() => {
-          refreshLocks.delete(sessionId);
+      if (!refreshLocks.has(cacheKey)) {
+        const refreshPromise = refreshPlaylistsCache(cacheKey, sessionId).finally(() => {
+          refreshLocks.delete(cacheKey);
         });
-        refreshLocks.set(sessionId, refreshPromise);
+        refreshLocks.set(cacheKey, refreshPromise);
       }
       const res = NextResponse.json(
-        { ...diskCache, cacheStatus: "stale", syncStatus: "syncing" },
+        {
+          ...diskCache,
+          cacheStatus: "stale",
+          syncStatus: "syncing",
+          state: "stale",
+          refreshStartedAt: new Date().toISOString()
+        },
         {
           headers: {
             ...rateLimitHeaders(limit.remaining, limit.resetAt),
@@ -142,7 +175,7 @@ export async function GET(req: NextRequest) {
       return res;
     }
 
-    const cached = playlistsCache.get(sessionId);
+    const cached = playlistsCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) {
       const res = NextResponse.json(cached.payload, {
         headers: {
@@ -155,11 +188,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (asyncMode) {
-      if (!refreshLocks.has(sessionId)) {
-        const refreshPromise = refreshPlaylistsCache(sessionId).finally(() => {
-          refreshLocks.delete(sessionId);
+      if (!refreshLocks.has(cacheKey)) {
+        const refreshPromise = refreshPlaylistsCache(cacheKey, sessionId).finally(() => {
+          refreshLocks.delete(cacheKey);
         });
-        refreshLocks.set(sessionId, refreshPromise);
+        refreshLocks.set(cacheKey, refreshPromise);
       }
       const res = NextResponse.json(
         {
@@ -167,7 +200,9 @@ export async function GET(req: NextRequest) {
           playlists: [],
           updatedAt: new Date().toISOString(),
           cacheStatus: "miss",
-          syncStatus: "syncing"
+          syncStatus: "syncing",
+          state: "refreshing",
+          refreshStartedAt: new Date().toISOString()
         },
         { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
       );
@@ -179,11 +214,15 @@ export async function GET(req: NextRequest) {
     const res = NextResponse.json(payload, {
       headers: rateLimitHeaders(limit.remaining, limit.resetAt)
     });
-    playlistsCache.set(sessionId, {
-      payload,
+    playlistsCache.set(cacheKey, {
+      payload: { ...payload, state: "ok", lastGoodAt: payload.updatedAt },
       expiresAt: Date.now() + CACHE_TTL_MS
     });
-    await writeCache(sessionId, payload);
+    await writeCache(cacheKey, {
+      ...payload,
+      state: "ok",
+      lastGoodAt: payload.updatedAt
+    });
     attachSessionCookie(res, sessionId, isNew);
     return res;
   } catch (error) {
@@ -220,19 +259,33 @@ async function buildPlaylistsPayload(sessionId: string) {
     })),
     updatedAt: new Date().toISOString(),
     cacheStatus: "miss",
-    syncStatus: "ok"
+    syncStatus: "ok",
+    state: "ok",
+    lastGoodAt: new Date().toISOString()
   };
 }
 
-async function refreshPlaylistsCache(sessionId: string) {
+async function refreshPlaylistsCache(cacheKey: string, sessionId: string) {
   try {
     const payload = await buildPlaylistsPayload(sessionId);
-    playlistsCache.set(sessionId, {
+    playlistsCache.set(cacheKey, {
       payload,
       expiresAt: Date.now() + CACHE_TTL_MS
     });
-    await writeCache(sessionId, payload);
+    await writeCache(cacheKey, payload);
   } catch {
-    // Best-effort background refresh.
+    const payload = {
+      total: 0,
+      playlists: [],
+      updatedAt: new Date().toISOString(),
+      cacheStatus: "stale",
+      syncStatus: "error",
+      state: "error"
+    };
+    playlistsCache.set(cacheKey, {
+      payload,
+      expiresAt: Date.now() + CACHE_TTL_MS
+    });
+    await writeCache(cacheKey, payload);
   }
 }

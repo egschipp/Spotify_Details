@@ -192,6 +192,24 @@ export async function spotifyFetch(
   });
 }
 
+export async function getSpotifyUserId(sessionId: string): Promise<string> {
+  const session = await getSession(sessionId);
+  if (session.spotifyUserId) {
+    return session.spotifyUserId;
+  }
+  const accessToken = await getValidAccessToken(sessionId);
+  const response = await spotifyFetch("/me", accessToken);
+  if (!response.ok) {
+    throw new Error("Failed to resolve Spotify user.");
+  }
+  const data = (await response.json()) as { id?: string };
+  if (!data?.id) {
+    throw new Error("Spotify user id missing.");
+  }
+  await setSession(sessionId, { spotifyUserId: data.id });
+  return data.id;
+}
+
 export function getRedirectUri(requestUrl: string): string {
   const baseUrl = getBaseUrl(requestUrl);
   return new URL("api/auth/spotify/callback", baseUrl).toString();
