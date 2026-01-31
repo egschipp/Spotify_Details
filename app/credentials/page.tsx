@@ -185,7 +185,7 @@ export default function CredentialsPage() {
 
     const results = await Promise.all([
       fetchWithDetails("Auth status", "/api/spotify/auth/status"),
-      fetchWithDetails("Playlists", "/api/spotify/playlists"),
+      fetchWithDetails("Playlists", "/api/spotify/playlists?async=1"),
       fetchWithDetails("Now Playing", "/api/spotify/now-playing"),
       fetchWithDetails("Playback state", "/api/spotify/player/state")
     ]);

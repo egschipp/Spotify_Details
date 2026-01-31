@@ -27,6 +27,9 @@ export default function PlaylistsPage() {
   );
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<"ok" | "syncing" | "error" | null>(
+    null
+  );
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const sortedPlaylists = useMemo(() => {
@@ -56,7 +59,7 @@ export default function PlaylistsPage() {
     setLoading(true);
     setErrorMessage(null);
     try {
-      const res = await fetch(withOrigin("/api/spotify/playlists"));
+      const res = await fetch(withOrigin("/api/spotify/playlists?async=1"));
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 401) {
@@ -67,6 +70,7 @@ export default function PlaylistsPage() {
         return;
       }
       setPlaylists(data.playlists ?? []);
+      setSyncStatus(data.syncStatus ?? null);
       setSelectedPlaylistIds(new Set());
     } catch (error) {
       setErrorMessage((error as Error).message);
@@ -110,6 +114,24 @@ export default function PlaylistsPage() {
   useEffect(() => {
     void loadPlaylists();
   }, []);
+
+  useEffect(() => {
+    if (syncStatus !== "syncing") return;
+    const timer = window.setTimeout(() => {
+      fetch(withOrigin("/api/spotify/playlists"))
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error ?? "Failed to fetch playlists.");
+          }
+          setPlaylists(data.playlists ?? []);
+          setSyncStatus(data.syncStatus ?? null);
+          setSelectedPlaylistIds(new Set());
+        })
+        .catch((error) => setErrorMessage((error as Error).message));
+    }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [syncStatus]);
 
   useEffect(() => {
     fetch(withBasePath("/api/session/refresh"), { method: "POST" }).catch(() => {});
