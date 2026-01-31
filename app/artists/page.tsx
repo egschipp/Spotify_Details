@@ -44,6 +44,7 @@ export default function ArtistsPage() {
     null
   );
   const [refreshing, setRefreshing] = useState(false);
+  const playerRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -284,6 +285,32 @@ export default function ArtistsPage() {
               </button>
             </div>
 
+            <div
+              ref={playerRef}
+              className="rounded-2xl border border-white/10 bg-black/50 p-4"
+            >
+              <div className="text-xs uppercase tracking-[0.2em] text-white/40">
+                Player
+              </div>
+              <div className="mt-3">
+                {selectedTrack ? (
+                  <iframe
+                    title={`Spotify player: ${selectedTrack.name}`}
+                    src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
+                    width="100%"
+                    height="152"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    className="rounded-xl border border-white/10"
+                  />
+                ) : (
+                  <p className="text-sm text-white/60">
+                    Select a track to start playback.
+                  </p>
+                )}
+              </div>
+            </div>
+
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
               <table className="min-w-full text-left text-sm">
                 <caption className="sr-only">Tracks saved by selected artist.</caption>
@@ -316,7 +343,15 @@ export default function ArtistsPage() {
                       <td className="px-4 py-3">
                         <button
                           type="button"
-                          onClick={() => setSelectedTrack(track)}
+                          onClick={() => {
+                            setSelectedTrack(track);
+                            setTimeout(() => {
+                              playerRef.current?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center"
+                              });
+                            }, 50);
+                          }}
                           className="text-left font-medium text-white transition hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                         >
                           <span className="inline-flex items-center gap-2">
@@ -361,29 +396,6 @@ export default function ArtistsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-white/40">
-                Player
-              </div>
-              <div className="mt-3">
-                {selectedTrack ? (
-                  <iframe
-                    title={`Spotify player: ${selectedTrack.name}`}
-                    src={`https://open.spotify.com/embed/track/${selectedTrack.id}`}
-                    width="100%"
-                    height="152"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                    className="rounded-xl border border-white/10"
-                  />
-                ) : (
-                  <p className="text-sm text-white/60">
-                    Select a track to start playback.
-                  </p>
-                )}
-              </div>
             </div>
           </div>
         </section>
