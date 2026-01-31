@@ -10,6 +10,7 @@ const emptyTracks: TrackSummary[] = [];
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const withBasePath = (path: string) =>
   basePath ? `${basePath}${path}` : path;
+const LIKED_PLAYLIST_ID = "__liked__";
 
 type TrackSummary = {
   id: string;
@@ -323,6 +324,10 @@ export default function HomePageClient() {
       setStatusMessage(null);
       return;
     }
+    if (playlistId === LIKED_PLAYLIST_ID) {
+      void handleFetchLiked();
+      return;
+    }
     void handleFetchPlaylist();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistId, authStatus.authenticated]);
@@ -539,10 +544,12 @@ export default function HomePageClient() {
                   <span className="truncate">
                     {loadingPlaylists
                       ? "Loading playlists..."
-                      : playlistId
-                        ? playlistOptions.find((p) => p.id === playlistId)?.name ??
-                          "Select a playlist"
-                        : "Select a playlist"}
+                      : playlistId === LIKED_PLAYLIST_ID
+                        ? "Liked songs"
+                        : playlistId
+                          ? playlistOptions.find((p) => p.id === playlistId)?.name ??
+                            "Select a playlist"
+                          : "Select a playlist"}
                   </span>
                   <span className="ml-3 text-white/60">
                     <svg
@@ -561,6 +568,25 @@ export default function HomePageClient() {
                     aria-label="Spotify playlists"
                     className="absolute z-10 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
                   >
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={playlistId === LIKED_PLAYLIST_ID}
+                      onClick={() => {
+                        setPlaylistId(LIKED_PLAYLIST_ID);
+                        setPlaylistMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                        playlistId === LIKED_PLAYLIST_ID
+                          ? "bg-tide/20 text-white"
+                          : "text-white/80 hover:bg-white/5"
+                      }`}
+                    >
+                      <span className="truncate">Liked songs</span>
+                      <span className="ml-3 whitespace-nowrap text-xs text-white/50">
+                        All liked tracks
+                      </span>
+                    </button>
                     {playlistOptions.length === 0 && (
                       <div className="px-3 py-2 text-sm text-white/60">
                         No playlists available.
@@ -597,13 +623,6 @@ export default function HomePageClient() {
                 )}
               </div>
               <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={handleFetchLiked}
-                  disabled={!authStatus.authenticated || loading || loadingLiked}
-                >
-                  Liked songs
-                </Button>
                 <Button
                   variant="secondary"
                   onClick={exportSelectedTracksCsv}
