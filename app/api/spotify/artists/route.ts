@@ -58,6 +58,7 @@ type ArtistsPayload = {
     spotifyUrl: string | null;
     durationMs: number;
     playlistNames: string[];
+    playlistRefs: { id: string; name: string; url: string }[];
     uri: string;
   }[];
   updatedAt: string;
@@ -264,6 +265,7 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
     {
       track: SpotifyTrack;
       playlistNames: Set<string>;
+      playlistRefs: Map<string, { id: string; name: string; url: string }>;
     }
   >();
 
@@ -273,9 +275,15 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
     for (const track of playlistTracks) {
       const entry = trackMap.get(track.id) ?? {
         track,
-        playlistNames: new Set<string>()
+        playlistNames: new Set<string>(),
+        playlistRefs: new Map<string, { id: string; name: string; url: string }>()
       };
       entry.playlistNames.add(playlist.name);
+      entry.playlistRefs.set(playlist.id, {
+        id: playlist.id,
+        name: playlist.name,
+        url: `https://open.spotify.com/playlist/${playlist.id}`
+      });
       trackMap.set(track.id, entry);
     }
   }
@@ -285,9 +293,15 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
   for (const track of likedTracks) {
     const entry = trackMap.get(track.id) ?? {
       track,
-      playlistNames: new Set<string>()
+      playlistNames: new Set<string>(),
+      playlistRefs: new Map<string, { id: string; name: string; url: string }>()
     };
     entry.playlistNames.add("Liked songs");
+    entry.playlistRefs.set("liked", {
+      id: "liked",
+      name: "Liked songs",
+      url: "https://open.spotify.com/collection/tracks"
+    });
     trackMap.set(track.id, entry);
   }
 
@@ -299,6 +313,9 @@ async function buildArtistsPayload(sessionId: string): Promise<ArtistsPayload> {
     spotifyUrl: entry.track.external_urls?.spotify ?? null,
     durationMs: entry.track.duration_ms,
     uri: entry.track.uri,
+    playlistRefs: Array.from(entry.playlistRefs.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "en", { sensitivity: "base" })
+    ),
     playlistNames: Array.from(entry.playlistNames)
       .filter((name): name is string => Boolean(name))
       .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }))

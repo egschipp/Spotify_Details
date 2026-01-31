@@ -12,6 +12,7 @@ type TrackSummary = {
   spotifyUrl: string | null;
   durationMs: number;
   playlistNames: string[];
+  playlistRefs: { id: string; name: string; url: string }[];
   uri: string;
 };
 
@@ -779,25 +780,27 @@ export default function ArtistsPage() {
                       Spotify Connect
                     </p>
                     <div className="flex items-center gap-2">
-                      <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/60 px-2 py-1 text-[10px] text-white/70">
-                        <button
-                          type="button"
-                          onClick={() => changePlayerVolume(-0.1)}
-                          aria-label="Decrease volume"
-                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                        >
-                          -
-                        </button>
+                      <label className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] text-white/70">
+                        <span className="text-white/50">Vol</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={Math.round(playerVolume * 100)}
+                          onChange={(event) => {
+                            const next = clamp(Number(event.target.value) / 100, 0, 1);
+                            setPlayerVolume(next);
+                          }}
+                          onMouseUp={() => {
+                            void changePlayerVolume(0);
+                          }}
+                          onTouchEnd={() => {
+                            void changePlayerVolume(0);
+                          }}
+                          className="h-1 w-20 accent-tide"
+                        />
                         <span>{Math.round(playerVolume * 100)}%</span>
-                        <button
-                          type="button"
-                          onClick={() => changePlayerVolume(0.1)}
-                          aria-label="Increase volume"
-                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                        >
-                          +
-                        </button>
-                      </div>
+                      </label>
                       <button
                         type="button"
                         onClick={refreshDevices}
@@ -939,7 +942,28 @@ export default function ArtistsPage() {
                         {formatDuration(track.durationMs)}
                       </td>
                       <td className="px-4 py-3 text-white/60">
-                        {track.playlistNames.join(", ")}
+                        <div className="flex flex-wrap gap-2">
+                          {(track.playlistRefs?.length ? track.playlistRefs : track.playlistNames.map((name) => ({ id: name, name, url: "" }))).map((playlist) =>
+                            playlist.url ? (
+                              <a
+                                key={playlist.id}
+                                href={playlist.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-full border border-white/10 bg-black/60 px-2 py-1 text-xs text-white/70 transition hover:border-tide hover:text-tide"
+                              >
+                                {playlist.name}
+                              </a>
+                            ) : (
+                              <span
+                                key={playlist.id}
+                                className="rounded-full border border-white/10 bg-black/40 px-2 py-1 text-xs text-white/50"
+                              >
+                                {playlist.name}
+                              </span>
+                            )
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {track.spotifyUrl ? (
