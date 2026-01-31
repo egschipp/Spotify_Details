@@ -145,9 +145,7 @@ export default function PlaylistsPage() {
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <BrandHeader />
-        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
-          Playlists
-        </h1>
+        <h1 className="sr-only">Playlists</h1>
 
         <div className="flex flex-wrap gap-3">
           <Button

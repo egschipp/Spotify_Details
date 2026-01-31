@@ -117,9 +117,7 @@ export default function CredentialsPage() {
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <BrandHeader />
-        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
-          Credentials
-        </h1>
+        <h1 className="sr-only">Credentials</h1>
 
         <section className="rounded-3xl border border-white/10 bg-black/40 p-6 text-sm text-white/70">
           <h2 className="font-display text-xl font-semibold text-white">

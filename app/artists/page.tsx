@@ -85,7 +85,7 @@ export default function ArtistsPage() {
   const [playerReady, setPlayerReady] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const [playerDeviceId, setPlayerDeviceId] = useState<string | null>(null);
-  const [playerVolume, setPlayerVolume] = useState(0.8);
+  const [playerVolume, setPlayerVolume] = useState(0.5);
   const [playbackState, setPlaybackState] = useState<PlaybackState | null>(null);
   const [seekValue, setSeekValue] = useState<number | null>(null);
   const [devices, setDevices] = useState<{ id: string; name: string; type: string; is_active: boolean }[]>([]);
@@ -619,9 +619,7 @@ export default function ArtistsPage() {
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <BrandHeader />
-        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
-          Artists
-        </h1>
+        <h1 className="sr-only">Artists</h1>
 
         <section className="grid gap-6 rounded-3xl bg-mist p-6 shadow-card">
           <div className="space-y-4">
@@ -1040,6 +1038,14 @@ export default function ArtistsPage() {
                     </p>
                     <div className="flex items-center gap-2">
                       <label className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] text-white/70">
+                        <button
+                          type="button"
+                          onClick={() => changePlayerVolume(-0.01)}
+                          aria-label="Decrease volume by 1 percent"
+                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                        >
+                          -
+                        </button>
                         <span className="text-white/50">Vol</span>
                         <input
                           type="range"
@@ -1059,6 +1065,14 @@ export default function ArtistsPage() {
                           className="h-1 w-20 accent-tide"
                         />
                         <span>{Math.round(playerVolume * 100)}%</span>
+                        <button
+                          type="button"
+                          onClick={() => changePlayerVolume(0.01)}
+                          aria-label="Increase volume by 1 percent"
+                          className="rounded-full px-1 text-white/80 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                        >
+                          +
+                        </button>
                       </label>
                       <button
                         type="button"

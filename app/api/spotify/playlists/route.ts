@@ -19,6 +19,29 @@ type SpotifyPlaylistsResponse = {
   total: number;
 };
 
+const MAX_RETRIES = 3;
+const RETRY_FALLBACK_MS = 1500;
+
+async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function spotifyFetchWithRetry(path: string, accessToken: string) {
+  let attempt = 0;
+  while (true) {
+    const response = await spotifyFetch(path, accessToken);
+    if (response.status !== 429 || attempt >= MAX_RETRIES) {
+      return response;
+    }
+    const retryAfter = response.headers.get("retry-after");
+    const waitMs = retryAfter
+      ? Number(retryAfter) * 1000
+      : RETRY_FALLBACK_MS * (attempt + 1);
+    await sleep(waitMs);
+    attempt += 1;
+  }
+}
+
 async function fetchAllPlaylists(accessToken: string) {
   const items: SpotifyPlaylistItem[] = [];
   let offset = 0;
@@ -26,7 +49,7 @@ async function fetchAllPlaylists(accessToken: string) {
   let next: string | null = null;
 
   do {
-    const response = await spotifyFetch(
+    const response = await spotifyFetchWithRetry(
       `/me/playlists?limit=${limit}&offset=${offset}`,
       accessToken
     );

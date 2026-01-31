@@ -1,49 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandHeader from "@/app/ui/BrandHeader";
-import Button from "@/app/ui/Button";
 
-const emptyTracks: TrackSummary[] = [];
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const withBasePath = (path: string) =>
   basePath ? `${basePath}${path}` : path;
-const LIKED_PLAYLIST_ID = "__liked__";
-
-type TrackSummary = {
-  id: string;
-  name: string;
-  artists: { id: string; name: string }[];
-  album: { id: string; name: string; images: { url: string }[] };
-  genre: string;
-  subgenre: string;
-  confidence: number;
-  spotifyUrl: string | null;
-  durationMs: number;
-  explicit: boolean;
-  popularity: number;
-  previewUrl: string | null;
-  uri: string;
-  isLocal: boolean;
-};
-
-function formatDuration(ms: number) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
 
 export default function HomePageClient() {
-  const [playlistId, setPlaylistId] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [playlistOptions, setPlaylistOptions] = useState<
-    { id: string; name: string; trackCount: number; owner: string }[]
-  >([]);
-  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [authStatus, setAuthStatus] = useState<{
     authenticated: boolean;
   }>({ authenticated: false });
@@ -69,35 +36,8 @@ export default function HomePageClient() {
     } | null;
   } | null>(null);
   const [loadingNowPlaying, setLoadingNowPlaying] = useState(false);
-  const [tracks, setTracks] = useState<TrackSummary[]>(emptyTracks);
-  const [selectedTrackIds, setSelectedTrackIds] = useState<Set<string>>(
-    () => new Set()
-  );
-  const [loading, setLoading] = useState(false);
-  const [loadingLiked, setLoadingLiked] = useState(false);
-  const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
-  const playlistMenuRef = useRef<HTMLDivElement | null>(null);
-  const playlistButtonRef = useRef<HTMLButtonElement | null>(null);
-
-  const trackCount = useMemo(() => tracks.length, [tracks.length]);
-  const selectedCount = useMemo(
-    () => selectedTrackIds.size,
-    [selectedTrackIds]
-  );
-  const allSelected = useMemo(
-    () => tracks.length > 0 && selectedTrackIds.size === tracks.length,
-    [tracks.length, selectedTrackIds]
-  );
-  const isIndeterminate = useMemo(
-    () =>
-      tracks.length > 0 &&
-      selectedTrackIds.size > 0 &&
-      selectedTrackIds.size < tracks.length,
-    [tracks.length, selectedTrackIds]
-  );
 
   async function loadStatus() {
     setErrorMessage(null);
@@ -124,33 +64,6 @@ export default function HomePageClient() {
       router.replace("/");
     }
   }, [searchParams, router]);
-
-  useEffect(() => {
-    async function loadPlaylists() {
-      if (!authStatus.authenticated) {
-        setPlaylistOptions([]);
-        setPlaylistId("");
-        return;
-      }
-      setLoadingPlaylists(true);
-      setErrorMessage(null);
-      try {
-        const res = await fetch(withBasePath("/api/spotify/playlists"));
-        const data = await res.json();
-        if (!res.ok) {
-          setErrorMessage(data.error ?? "Failed to fetch playlists.");
-          return;
-        }
-        setPlaylistOptions(data.playlists ?? []);
-      } catch (error) {
-        setErrorMessage((error as Error).message);
-      } finally {
-        setLoadingPlaylists(false);
-      }
-    }
-
-    void loadPlaylists();
-  }, [authStatus.authenticated]);
 
   useEffect(() => {
     if (!authStatus.authenticated) {
@@ -191,180 +104,15 @@ export default function HomePageClient() {
     };
   }, [authStatus.authenticated]);
 
-  async function handleFetchPlaylist() {
+  useEffect(() => {
     setStatusMessage(null);
-    setErrorMessage(null);
-    setLoading(true);
-    setTracks(emptyTracks);
-    setSelectedTrackIds(new Set());
-    try {
-      const res = await fetch(withBasePath("/api/spotify/playlist"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ playlistId })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMessage(data.error ?? "Failed to fetch playlist.");
-        return;
-      }
-      setTracks(data.tracks ?? []);
-      setSelectedTrackIds(new Set());
-      setStatusMessage(`Playlist loaded: ${data.total} tracks.`);
-    } catch (error) {
-      setErrorMessage((error as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleFetchLiked() {
-    setStatusMessage(null);
-    setErrorMessage(null);
-    setLoadingLiked(true);
-    setTracks(emptyTracks);
-    setSelectedTrackIds(new Set());
-    try {
-      const res = await fetch(withBasePath("/api/spotify/liked"), {
-        method: "POST"
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMessage(data.error ?? "Failed to fetch liked songs.");
-        return;
-      }
-      setTracks(data.tracks ?? []);
-      setSelectedTrackIds(new Set());
-      setStatusMessage(`Liked songs loaded: ${data.total} tracks.`);
-    } catch (error) {
-      setErrorMessage((error as Error).message);
-    } finally {
-      setLoadingLiked(false);
-    }
-  }
-
-  function exportSelectedTracksCsv() {
-    const selectedTracks = tracks.filter((track) =>
-      selectedTrackIds.has(track.id)
-    );
-    const header = [
-      "Track",
-      "Artists",
-      "Album",
-      "Duration",
-      "Popularity",
-      "Explicit",
-      "Spotify URL"
-    ];
-    const rows = selectedTracks.map((track) => [
-      track.name,
-      track.artists.map((artist) => artist.name).join(", "),
-      track.album.name,
-      formatDuration(track.durationMs),
-      String(track.popularity),
-      track.explicit ? "yes" : "no",
-      track.spotifyUrl ?? ""
-    ]);
-    const csv = [header, ...rows]
-      .map((row) =>
-        row
-          .map((value) => `\"${String(value).replace(/\"/g, '\"\"')}\"`)
-          .join(",")
-      )
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `spotify-tracks-${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
-
-  function toggleTrackSelection(trackId: string) {
-    setSelectedTrackIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(trackId)) {
-        next.delete(trackId);
-      } else {
-        next.add(trackId);
-      }
-      return next;
-    });
-  }
-
-  function toggleSelectAll() {
-    setSelectedTrackIds((prev) => {
-      if (tracks.length === 0) {
-        return prev;
-      }
-      if (prev.size === tracks.length) {
-        return new Set();
-      }
-      return new Set(tracks.map((track) => track.id));
-    });
-  }
-
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = isIndeterminate;
-    }
-  }, [isIndeterminate]);
-
-  useEffect(() => {
-    // Auto-load playlist (or liked songs) whenever the selection changes.
-    if (!authStatus.authenticated) {
-      return;
-    }
-    if (!playlistId) {
-      setTracks(emptyTracks);
-      setSelectedTrackIds(new Set());
-      setStatusMessage(null);
-      return;
-    }
-    if (playlistId === LIKED_PLAYLIST_ID) {
-      void handleFetchLiked();
-      return;
-    }
-    void handleFetchPlaylist();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistId, authStatus.authenticated]);
-
-  useEffect(() => {
-    // Close the custom dropdown on outside click or Escape.
-    function handleClickOutside(event: MouseEvent) {
-      if (!playlistMenuOpen) return;
-      const target = event.target as Node;
-      if (playlistMenuRef.current && !playlistMenuRef.current.contains(target)) {
-        setPlaylistMenuOpen(false);
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setPlaylistMenuOpen(false);
-        playlistButtonRef.current?.focus();
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [playlistMenuOpen]);
+  }, [authStatus.authenticated]);
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <BrandHeader />
-        <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
-          Home
-        </h1>
+        <h1 className="sr-only">Home</h1>
 
         {!authStatus.authenticated && (
           <section className="rounded-3xl border border-white/10 bg-black/50 p-6 text-sm text-white/70">
@@ -483,8 +231,7 @@ export default function HomePageClient() {
             <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
               <h2 className="font-display text-2xl font-semibold">About this app</h2>
               <p className="mt-2 text-sm text-white/60">
-                With this app you can view your Spotify playlists, track details,
-                genres, and realtime “Now Playing” in one place.
+                With this app you can view your Spotify data and realtime “Now Playing” in one place.
               </p>
               <p className="mt-3 text-sm text-white/60">
                 This is my first project built with vibe coding in Visual Studio Code
@@ -519,272 +266,23 @@ export default function HomePageClient() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-mist p-6 shadow-card">
-          <div className="space-y-4">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="font-display text-2xl font-semibold">
-                  Select a playlist
-                </h2>
-                <p className="text-sm text-white/60">
-                  Choose from your Spotify playlists (including private ones).
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 md:flex-row">
-              <div className="relative flex-1" ref={playlistMenuRef}>
-                <button
-                  type="button"
-                  ref={playlistButtonRef}
-                  onClick={() =>
-                    setPlaylistMenuOpen((prev) =>
-                      !authStatus.authenticated || loadingPlaylists ? prev : !prev
-                    )
-                  }
-                  disabled={!authStatus.authenticated || loadingPlaylists}
-                  aria-haspopup="listbox"
-                  aria-expanded={playlistMenuOpen}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-left text-sm text-white shadow-card transition focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="truncate">
-                    {loadingPlaylists
-                      ? "Loading playlists..."
-                      : playlistId === LIKED_PLAYLIST_ID
-                        ? "Liked songs"
-                        : playlistId
-                          ? playlistOptions.find((p) => p.id === playlistId)?.name ??
-                            "Select a playlist"
-                          : "Select a playlist"}
-                  </span>
-                  <span className="ml-3 text-white/60">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`h-4 w-4 transition ${playlistMenuOpen ? "rotate-180" : ""}`}
-                      aria-hidden="true"
-                    >
-                      <path fill="currentColor" d="M7 10l5 5 5-5H7z" />
-                    </svg>
-                  </span>
-                </button>
-
-                {playlistMenuOpen && (
-                  <div
-                    role="listbox"
-                    aria-label="Spotify playlists"
-                    className="absolute z-10 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
-                  >
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={playlistId === LIKED_PLAYLIST_ID}
-                      onClick={() => {
-                        setPlaylistId(LIKED_PLAYLIST_ID);
-                        setPlaylistMenuOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                        playlistId === LIKED_PLAYLIST_ID
-                          ? "bg-tide/20 text-white"
-                          : "text-white/80 hover:bg-white/5"
-                      }`}
-                    >
-                      <span className="truncate">Liked songs</span>
-                      <span className="ml-3 whitespace-nowrap text-xs text-white/50">
-                        All liked tracks
-                      </span>
-                    </button>
-                    {playlistOptions.length === 0 && (
-                      <div className="px-3 py-2 text-sm text-white/60">
-                        No playlists available.
-                      </div>
-                    )}
-                    {playlistOptions.map((playlist) => {
-                      const isSelected = playlist.id === playlistId;
-                      return (
-                        <button
-                          key={playlist.id}
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          onClick={() => {
-                            setPlaylistId(playlist.id);
-                            setPlaylistMenuOpen(false);
-                          }}
-                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
-                            isSelected
-                              ? "bg-tide/20 text-white"
-                              : "text-white/80 hover:bg-white/5"
-                          }`}
-                        >
-                          <span className="truncate">
-                            {playlist.name}
-                          </span>
-                          <span className="ml-3 whitespace-nowrap text-xs text-white/50">
-                            {playlist.trackCount} tracks · {playlist.owner}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={exportSelectedTracksCsv}
-                  disabled={
-                    !selectedCount || loading || loadingLiked || !tracks.length
-                  }
-                >
-                  Export selection ({selectedCount})
-                </Button>
-              </div>
-            </div>
+        {statusMessage && (
+          <div
+            className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide"
+            role="status"
+            aria-live="polite"
+          >
+            {statusMessage}
           </div>
-
-          {statusMessage && (
-            <div
-              className="rounded-2xl border border-tide/30 bg-tide/10 px-4 py-3 text-sm text-tide"
-              role="status"
-              aria-live="polite"
-            >
-              {statusMessage}
-            </div>
-          )}
-          {errorMessage && (
-            <div
-              className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-              role="alert"
-            >
-              {errorMessage}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm text-white/60">
-              <span>{trackCount ? `${trackCount} tracks` : "No tracks yet"}</span>
-              {(loading || loadingLiked) && <span>Loading...</span>}
-            </div>
-
-            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
-              <table className="min-w-full text-left text-sm">
-                <caption className="sr-only">Tracklist of the selected playlist.</caption>
-                <thead className="bg-steel/80 text-xs uppercase tracking-[0.2em] text-white/50">
-                  <tr>
-                    <th scope="col" className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <input
-                          ref={selectAllRef}
-                          type="checkbox"
-                          aria-label="Select all tracks"
-                          checked={allSelected}
-                          onChange={toggleSelectAll}
-                          disabled={!tracks.length}
-                          className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                        />
-                        <span>Selection</span>
-                      </div>
-                    </th>
-                    <th scope="col" className="px-4 py-3">Cover</th>
-                    <th scope="col" className="px-4 py-3">Track</th>
-                    <th scope="col" className="px-4 py-3">Spotify</th>
-                    <th scope="col" className="px-4 py-3">Artists</th>
-                    <th scope="col" className="px-4 py-3">Album</th>
-                    <th scope="col" className="px-4 py-3">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
-                        Loading playlist...
-                      </td>
-                    </tr>
-                  )}
-                  {!loading && tracks.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-6 text-center text-sm text-white/50">
-                        No data. Log in and load a playlist.
-                      </td>
-                    </tr>
-                  )}
-                  {!loading &&
-                    tracks.map((track) => (
-                      <tr
-                        key={track.id}
-                        className="border-t border-white/5 hover:bg-white/5"
-                      >
-                        <td className="px-4 py-3">
-                          <input
-                            type="checkbox"
-                            aria-label={`Select ${track.name}`}
-                            checked={selectedTrackIds.has(track.id)}
-                            onChange={() => toggleTrackSelection(track.id)}
-                            className="h-4 w-4 rounded border-white/30 bg-transparent text-tide focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="h-12 w-12 overflow-hidden rounded-xl bg-steel">
-                            {track.album.images?.[0] && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={
-                                  track.album.images[track.album.images.length - 1]?.url ??
-                                  track.album.images[0].url
-                                }
-                                alt={track.album.name}
-                                className="h-full w-full object-cover"
-                              />
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/track/${track.id}`}
-                            className="font-medium text-white hover:text-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                          >
-                            {track.name}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          {track.spotifyUrl ? (
-                            <a
-                              href={track.spotifyUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:border-tide hover:text-tide"
-                              aria-label="Open in Spotify"
-                            >
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="h-4 w-4"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  fill="currentColor"
-                                  d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.588 14.56a.75.75 0 0 1-1.032.248c-2.828-1.73-6.39-2.12-10.59-1.16a.75.75 0 1 1-.333-1.463c4.61-1.05 8.55-.607 11.72 1.33a.75.75 0 0 1 .235 1.045zm1.475-3.11a.9.9 0 0 1-1.238.297c-3.24-1.99-8.18-2.57-12.01-1.41a.9.9 0 1 1-.523-1.723c4.33-1.31 9.69-.66 13.33 1.56a.9.9 0 0 1 .44 1.276zm.126-3.23c-3.78-2.25-10.02-2.46-13.63-1.36a1.05 1.05 0 1 1-.612-2.01c4.16-1.26 11.07-1.01 15.43 1.56a1.05 1.05 0 0 1-1.188 1.81z"
-                                />
-                              </svg>
-                            </a>
-                          ) : (
-                            <span className="text-xs text-white/40">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-white/70">
-                          {track.artists.map((artist) => artist.name).join(", ")}
-                        </td>
-                        <td className="px-4 py-3 text-white/70">
-                          {track.album.name}
-                        </td>
-                        <td className="px-4 py-3 text-white/60">
-                          {formatDuration(track.durationMs)}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+        )}
+        {errorMessage && (
+          <div
+            className="rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+            role="alert"
+          >
+            {errorMessage}
           </div>
-        </section>
+        )}
       </div>
     </main>
   );
