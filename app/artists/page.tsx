@@ -372,23 +372,29 @@ export default function ArtistsPage() {
       playerInstanceRef.current = player;
     }
 
-    if ((window as any).Spotify) {
+    const w = window as any;
+    w.onSpotifyWebPlaybackSDKReady = () => initializePlayer();
+
+    if (w.Spotify) {
       initializePlayer();
       return () => {
         cancelled = true;
         playerInstanceRef.current?.disconnect();
+        w.onSpotifyWebPlaybackSDKReady = null;
       };
     }
 
     const script = document.createElement("script");
     script.src = "https://sdk.scdn.co/spotify-player.js";
     script.async = true;
-    script.onload = () => initializePlayer();
     document.body.appendChild(script);
 
     return () => {
       cancelled = true;
       playerInstanceRef.current?.disconnect();
+      if (w.onSpotifyWebPlaybackSDKReady) {
+        w.onSpotifyWebPlaybackSDKReady = null;
+      }
       script.remove();
     };
   }, [authStatus.authenticated]);
