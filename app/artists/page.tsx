@@ -741,20 +741,17 @@ export default function ArtistsPage() {
                               playbackState?.durationMs ?? selectedTrack?.durationMs ?? 0
                             )}
                             onChange={(event) => {
-                              setSeeking(true);
                               setSeekValue(Number(event.target.value));
                             }}
                             onMouseUp={() => {
                               if (seekValue != null) {
                                 void seekTo(seekValue);
                               }
-                              setSeeking(false);
                             }}
                             onTouchEnd={() => {
                               if (seekValue != null) {
                                 void seekTo(seekValue);
                               }
-                              setSeeking(false);
                             }}
                             className="flex-1 accent-tide"
                           />
