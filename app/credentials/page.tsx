@@ -21,6 +21,17 @@ export default function CredentialsPage() {
   const [authStatus, setAuthStatus] = useState<{ authenticated: boolean }>({
     authenticated: false
   });
+  const [connectivityStatus, setConnectivityStatus] = useState<{
+    running: boolean;
+    results: {
+      name: string;
+      ok: boolean;
+      status?: number;
+      statusText?: string;
+      error?: string;
+      elapsedMs?: number;
+    }[];
+  }>({ running: false, results: [] });
   const router = useRouter();
   const canSave =
     clientId.trim().length > 0 && clientSecret.trim().length > 0;
@@ -42,6 +53,7 @@ export default function CredentialsPage() {
 
   useEffect(() => {
     void loadStatus();
+    void runConnectivityCheck();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -111,6 +123,64 @@ export default function CredentialsPage() {
     } catch (error) {
       setErrorMessage((error as Error).message);
     }
+  }
+
+  async function runConnectivityCheck() {
+    setConnectivityStatus({ running: true, results: [] });
+
+    async function fetchWithDetails(
+      name: string,
+      path: string,
+      options?: RequestInit
+    ) {
+      const start = Date.now();
+      try {
+        const res = await fetch(withBasePath(path), options);
+        const elapsedMs = Date.now() - start;
+        if (!res.ok) {
+          const contentType = res.headers.get("content-type") ?? "";
+          let detail = "";
+          if (contentType.includes("application/json")) {
+            const data = await res.json().catch(() => ({}));
+            detail = data?.error ?? JSON.stringify(data);
+          } else {
+            detail = await res.text().catch(() => "");
+          }
+          return {
+            name,
+            ok: false,
+            status: res.status,
+            statusText: res.statusText,
+            elapsedMs,
+            error: detail || "Request failed."
+          };
+        }
+        return {
+          name,
+          ok: true,
+          status: res.status,
+          statusText: res.statusText,
+          elapsedMs
+        };
+      } catch (error) {
+        const elapsedMs = Date.now() - start;
+        return {
+          name,
+          ok: false,
+          elapsedMs,
+          error: (error as Error).message
+        };
+      }
+    }
+
+    const results = await Promise.all([
+      fetchWithDetails("Auth status", "/api/spotify/auth/status"),
+      fetchWithDetails("Playlists", "/api/spotify/playlists"),
+      fetchWithDetails("Now Playing", "/api/spotify/now-playing"),
+      fetchWithDetails("Playback state", "/api/spotify/player/state")
+    ]);
+
+    setConnectivityStatus({ running: false, results });
   }
 
   return (
@@ -254,6 +324,57 @@ export default function CredentialsPage() {
             <p className="text-xs text-white/50">
               After login, tokens are stored server-side. No tokens in the browser.
             </p>
+          </div>
+
+          <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/50 p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/40">
+                Connectivity
+              </p>
+              <Button
+                variant="secondary"
+                onClick={runConnectivityCheck}
+                disabled={connectivityStatus.running}
+              >
+                {connectivityStatus.running ? "Checking..." : "Check now"}
+              </Button>
+            </div>
+            {connectivityStatus.results.length === 0 && (
+              <p className="text-sm text-white/60">
+                No checks yet. Run a connectivity check to see detailed status.
+              </p>
+            )}
+            {connectivityStatus.results.length > 0 && (
+              <div className="space-y-3 text-sm text-white/80">
+                {connectivityStatus.results.map((result) => (
+                  <div
+                    key={result.name}
+                    className="rounded-2xl border border-white/10 bg-black/60 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold">{result.name}</span>
+                      <span
+                        className={`text-xs ${
+                          result.ok ? "text-tide" : "text-red-300"
+                        }`}
+                      >
+                        {result.ok ? "OK" : "Error"}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-white/50">
+                      {result.status != null ? `HTTP ${result.status}` : "No response"}
+                      {result.statusText ? ` · ${result.statusText}` : ""}
+                      {result.elapsedMs != null ? ` · ${result.elapsedMs}ms` : ""}
+                    </div>
+                    {result.error && (
+                      <p className="mt-2 text-xs text-red-200 break-words">
+                        {result.error}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
