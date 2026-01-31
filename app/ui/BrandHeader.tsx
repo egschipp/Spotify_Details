@@ -22,6 +22,7 @@ export default function BrandHeader({
   const navItems = [
     { href: "/", label: "Home" },
     { href: "/playlists", label: "Playlists" },
+    { href: "/artists", label: "Artists" },
     { href: "/credentials", label: "Credentials" }
   ];
   return (
