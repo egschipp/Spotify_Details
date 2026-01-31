@@ -21,6 +21,8 @@ PI_USER="<deploy_user>"             # Deploy user
 PI_SSH_KEY="<PRIVATE_KEY>"          # Private SSH key inhoud
 
 ENV_FILE_CONTENT="<.env inhoud>"    # (optioneel) .env inhoud voor productie
+CACHE_DEBUG_TOKEN="<token>"         # (optioneel) debug token voor cache metrics
+NEXT_PUBLIC_CACHE_DEBUG_TOKEN="<token>" # (optioneel) zelfde waarde als hierboven
 ```
 
 **Uitleg per variabele**
@@ -72,6 +74,14 @@ ENV_FILE_CONTENT="<.env inhoud>"    # (optioneel) .env inhoud voor productie
   Waarvoor: productie‑config in `.env` die tijdens deploy geschreven wordt.  
   Waar vinden: je productie‑waarden (API keys, DB URL’s) — **niet** in de repo.
 
+- `CACHE_DEBUG_TOKEN` (optioneel)  
+  Waarvoor: beveiligde toegang tot `/api/debug/cache` (cache‑metrics).  
+  Waar vinden: genereer een willekeurige lange waarde (bijv. 32+ chars).
+
+- `NEXT_PUBLIC_CACHE_DEBUG_TOKEN` (optioneel)  
+  Waarvoor: dezelfde token, client‑side nodig om de debug endpoint op de credentials‑pagina te tonen.  
+  Waar vinden: identiek aan `CACHE_DEBUG_TOKEN`.
+
 **Afgeleide waarden**
 ```
 IMAGE_NAME="ghcr.io/${GITHUB_OWNER}/${REPO_NAME}"
@@ -103,6 +113,7 @@ Voeg toe:
 - `PI_USER` = `${PI_USER}`
 - `PI_SSH_KEY` = inhoud van de private SSH key
 - `APP_ENV_FILE` (optioneel) = `${ENV_FILE_CONTENT}`
+- `CACHE_DEBUG_TOKEN` (optioneel, maar aanbevolen)
 
 ---
 

@@ -40,6 +40,10 @@ Optional:
   Only needed if you want server-side artist lookups without per-session credentials.
 - `SPOTIFY_DATA_DIR`  
   Override data directory path (default: `./data`)
+- `CACHE_DEBUG_TOKEN`  
+  Token to protect `/api/debug/cache` (cache metrics). Must match `NEXT_PUBLIC_CACHE_DEBUG_TOKEN`.
+- `NEXT_PUBLIC_CACHE_DEBUG_TOKEN`  
+  Same value as `CACHE_DEBUG_TOKEN` for client-side diagnostics.
 
 Generate a 32-byte hex key:
 ```bash
