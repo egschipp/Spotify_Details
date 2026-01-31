@@ -359,15 +359,7 @@ export default function HomePageClient() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-display text-2xl font-semibold">Now Playing</h2>
-                <p className="text-sm text-white/60">
-                  Live from your Spotify player (refreshes every 3s).
-                </p>
               </div>
-              {loadingNowPlaying && (
-                <span className="text-xs uppercase tracking-[0.2em] text-white/40">
-                  loading...
-                </span>
-              )}
             </div>
             {!authStatus.authenticated && (
               <p className="text-sm text-white/60">
@@ -472,6 +464,10 @@ export default function HomePageClient() {
               <p className="mt-2 text-sm text-white/60">
                 With this app you can view your Spotify playlists, track details,
                 genres, and realtime “Now Playing” in one place.
+              </p>
+              <p className="mt-3 text-sm text-white/60">
+                This is my first project built with vibe coding in Visual Studio Code
+                using Codex, complete with a fully working GitHub pipeline.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
