@@ -74,9 +74,12 @@ export default function HomePageClient() {
   );
   const [loading, setLoading] = useState(false);
   const [loadingLiked, setLoadingLiked] = useState(false);
+  const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const playlistMenuRef = useRef<HTMLDivElement | null>(null);
+  const playlistButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const trackCount = useMemo(() => tracks.length, [tracks.length]);
   const selectedCount = useMemo(
@@ -310,6 +313,30 @@ export default function HomePageClient() {
     }
   }, [isIndeterminate]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!playlistMenuOpen) return;
+      const target = event.target as Node;
+      if (playlistMenuRef.current && !playlistMenuRef.current.contains(target)) {
+        setPlaylistMenuOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPlaylistMenuOpen(false);
+        playlistButtonRef.current?.focus();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [playlistMenuOpen]);
+
   return (
     <main className="min-h-screen px-4 py-8 md:px-10 md:py-12">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
@@ -485,24 +512,79 @@ export default function HomePageClient() {
               </div>
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
-              <div className="flex-1">
-                <select
-                  value={playlistId}
-                  onChange={(event) => setPlaylistId(event.target.value)}
+              <div className="relative flex-1" ref={playlistMenuRef}>
+                <button
+                  type="button"
+                  ref={playlistButtonRef}
+                  onClick={() =>
+                    setPlaylistMenuOpen((prev) =>
+                      !authStatus.authenticated || loadingPlaylists ? prev : !prev
+                    )
+                  }
                   disabled={!authStatus.authenticated || loadingPlaylists}
-                  className="w-full rounded-2xl border border-white/10 bg-black/60 px-4 py-3 text-sm text-white focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-haspopup="listbox"
+                  aria-expanded={playlistMenuOpen}
+                  className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-left text-sm text-white shadow-card transition focus:border-tide focus:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <option value="">
+                  <span className="truncate">
                     {loadingPlaylists
                       ? "Loading playlists..."
-                      : "Select a playlist"}
-                  </option>
-                  {playlistOptions.map((playlist) => (
-                    <option key={playlist.id} value={playlist.id}>
-                      {playlist.name} · {playlist.trackCount} tracks · {playlist.owner}
-                    </option>
-                  ))}
-                </select>
+                      : playlistId
+                        ? playlistOptions.find((p) => p.id === playlistId)?.name ??
+                          "Select a playlist"
+                        : "Select a playlist"}
+                  </span>
+                  <span className="ml-3 text-white/60">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`h-4 w-4 transition ${playlistMenuOpen ? "rotate-180" : ""}`}
+                      aria-hidden="true"
+                    >
+                      <path fill="currentColor" d="M7 10l5 5 5-5H7z" />
+                    </svg>
+                  </span>
+                </button>
+
+                {playlistMenuOpen && (
+                  <div
+                    role="listbox"
+                    aria-label="Spotify playlists"
+                    className="absolute z-10 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
+                  >
+                    {playlistOptions.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-white/60">
+                        No playlists available.
+                      </div>
+                    )}
+                    {playlistOptions.map((playlist) => {
+                      const isSelected = playlist.id === playlistId;
+                      return (
+                        <button
+                          key={playlist.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => {
+                            setPlaylistId(playlist.id);
+                            setPlaylistMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition ${
+                            isSelected
+                              ? "bg-tide/20 text-white"
+                              : "text-white/80 hover:bg-white/5"
+                          }`}
+                        >
+                          <span className="truncate">
+                            {playlist.name}
+                          </span>
+                          <span className="ml-3 whitespace-nowrap text-xs text-white/50">
+                            {playlist.trackCount} tracks · {playlist.owner}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button
