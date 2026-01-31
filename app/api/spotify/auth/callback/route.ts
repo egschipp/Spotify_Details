@@ -24,6 +24,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  // Throttle callback to reduce brute-force / replay attempts.
   const limit = rateLimit(`auth-callback:${sessionId}`, {
     windowMs: 60_000,
     max: 10
@@ -62,6 +63,7 @@ export async function GET(req: NextRequest) {
     return res;
   }
 
+  // Resolve the OAuth record via nonce cookie; fall back to state lookup if needed.
   const oauthNonce = req.cookies.get("oauth_nonce")?.value;
   let resolvedNonce = oauthNonce ?? null;
   let oauthRecord = oauthNonce ? await getOAuthRecord(oauthNonce) : null;
@@ -105,6 +107,7 @@ export async function GET(req: NextRequest) {
     })
   );
 
+  // Prefer saved credentials; fall back to the ones captured at auth start.
   const credentials =
     (await getCredentials(sessionId)) ?? {
       clientId: oauthRecord.clientId,
@@ -121,6 +124,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const redirectUri = getRedirectUriFromRequest(req);
+    // Exchange code for access/refresh tokens using PKCE verifier.
     const token = await exchangeCodeForToken({
       clientId: credentials.clientId,
       clientSecret: credentials.clientSecret,
@@ -129,6 +133,7 @@ export async function GET(req: NextRequest) {
       codeVerifier: oauthRecord.codeVerifier
     });
     const expiresAt = Date.now() + token.expires_in * 1000 - 30_000;
+    // Persist tokens in the server session; keep cookies HttpOnly.
     await setSession(sessionId, {
       accessToken: token.access_token,
       refreshToken: token.refresh_token,
@@ -156,6 +161,7 @@ export async function GET(req: NextRequest) {
         maxAge: 0,
         ...(cookieDomain ? { domain: cookieDomain } : {})
       });
+      // Clean up the nonce record to avoid replay.
       await clearOAuthRecord(resolvedNonce);
     }
     setOAuthSessionCookie(res, sessionId);

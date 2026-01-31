@@ -19,6 +19,7 @@ export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const { sessionId, isNew } = getSessionId(req);
+  // Throttle OAuth start to prevent abuse and accidental loops.
   const limit = rateLimit(`auth-start:${sessionId}`, {
     windowMs: 60_000,
     max: 10
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  // PKCE: generate verifier/challenge pair and store state server-side.
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = crypto.randomUUID();
@@ -54,6 +56,7 @@ export async function GET(req: NextRequest) {
     returnTo
   });
 
+  // Store a short-lived server-side record keyed by a nonce cookie.
   const nonce = await createOAuthRecord({
     state,
     codeVerifier,
@@ -88,6 +91,7 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.redirect(url, {
     headers: rateLimitHeaders(limit.remaining, limit.resetAt)
   });
+  // Nonce cookie must survive cross-site redirects on iOS (SameSite=None; Secure).
   const cookieDomain = getCookieDomain();
   res.cookies.set({
     name: "oauth_nonce",

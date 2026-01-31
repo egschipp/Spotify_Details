@@ -122,6 +122,89 @@ example.com {
 }
 ```
 
+## Raspberry Pi deployment (container + Caddy)
+
+### 1) App container on the Pi
+Place the app compose file in `/opt/spotify-details/docker-compose.yml` (example):
+```yaml
+services:
+  spotify-details:
+    image: ghcr.io/<OWNER>/<REPO>:latest
+    container_name: spotify-details
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_BASE_PATH: /spotify
+      SPOTIFY_DATA_DIR: /app/data
+      TZ: Europe/Amsterdam
+      HOSTNAME: 0.0.0.0
+      SPOTIFY_REDIRECT_BASE: https://<PUBLIC_HOST>/spotify
+    env_file:
+      - .env
+    volumes:
+      - spotify_details_data:/app/data
+    expose:
+      - "3000"
+    networks:
+      - web
+
+volumes:
+  spotify_details_data:
+
+networks:
+  web:
+    external: true
+```
+
+### 2) Caddy container on the Pi
+Example Caddy compose in `/opt/caddy/docker-compose.yml`:
+```yaml
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  web:
+    external: true
+```
+
+### 3) Caddyfile on the Pi
+`/opt/caddy/Caddyfile`:
+```caddyfile
+<PUBLIC_HOST> {
+  reverse_proxy spotify-details:3000 {
+    header_up Host {host}
+    header_up X-Forwarded-Proto {scheme}
+    header_up X-Forwarded-Host {host}
+  }
+}
+```
+
+### 4) Public exposure on an external IP
+To make the app reachable from the internet:
+1) Point your DNS (A/AAAA record) to your **external/public IP**.  
+2) Forward ports **80** and **443** on your router to the Pi’s internal IP.  
+3) Ensure Caddy is running and can bind to ports 80/443.  
+
+When this is set, your app is reachable at:
+```
+https://<PUBLIC_HOST>/spotify
+```
+
 ## Tests
 
 ```bash

@@ -315,6 +315,7 @@ export default function HomePageClient() {
   }, [isIndeterminate]);
 
   useEffect(() => {
+    // Auto-load playlist (or liked songs) whenever the selection changes.
     if (!authStatus.authenticated) {
       return;
     }
@@ -333,6 +334,7 @@ export default function HomePageClient() {
   }, [playlistId, authStatus.authenticated]);
 
   useEffect(() => {
+    // Close the custom dropdown on outside click or Escape.
     function handleClickOutside(event: MouseEvent) {
       if (!playlistMenuOpen) return;
       const target = event.target as Node;
@@ -487,6 +489,9 @@ export default function HomePageClient() {
               <p className="mt-3 text-sm text-white/60">
                 This is my first project built with vibe coding in Visual Studio Code
                 using Codex, complete with a fully working GitHub pipeline.
+              </p>
+              <p className="mt-3 text-sm text-white/60">
+                This web app runs in a Docker container on a Raspberry Pi.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
