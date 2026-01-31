@@ -278,9 +278,9 @@ export default function ArtistsPage() {
     }
 
     // Keep UI in sync if Spotify Connect advanced on its own.
-    if (prev.track.id !== playbackState.track.id) {
+    if (prev.track.id !== playbackState.track?.id) {
       const match = filteredTracks.find(
-        (track) => track.id === playbackState.track.id
+        (track) => track.id === playbackState.track?.id
       );
       if (match) {
         setSelectedTrack(match);
