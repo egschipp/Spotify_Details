@@ -104,6 +104,7 @@ export default function ArtistsPage() {
   const artistListRef = useRef<HTMLDivElement | null>(null);
   const artistAnchorRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const lastAutoAdvanceIdRef = useRef<string | null>(null);
+  const prevPlaybackRef = useRef<PlaybackState | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
   const artistSearchRef = useRef<HTMLInputElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -265,19 +266,40 @@ export default function ArtistsPage() {
   }, [authStatus.authenticated, selectedDeviceId]);
 
   useEffect(() => {
-    if (!playbackState?.track?.id || !selectedTrack) return;
-    if (playbackState.track.id !== selectedTrack.id) return;
-    if (playbackState.isPlaying) return;
-    if (filteredTracks.length < 2) return;
-    if (playbackState.durationMs === 0) return;
+    if (!playbackState?.track?.id) {
+      prevPlaybackRef.current = playbackState ?? null;
+      return;
+    }
 
-    const nearEnd =
-      playbackState.progressMs >= playbackState.durationMs - 1500;
-    if (!nearEnd) return;
+    const prev = prevPlaybackRef.current;
+    prevPlaybackRef.current = playbackState;
+
+    if (!prev?.track?.id) {
+      return;
+    }
+
+    // Keep UI in sync if Spotify Connect advanced on its own.
+    if (prev.track.id !== playbackState.track.id) {
+      const match = filteredTracks.find(
+        (track) => track.id === playbackState.track.id
+      );
+      if (match) {
+        setSelectedTrack(match);
+      }
+      return;
+    }
+
+    if (filteredTracks.length < 2) return;
+
+    const wasNearEnd =
+      prev.durationMs > 0 && prev.progressMs >= prev.durationMs - 1500;
+    const stalledOrEnded =
+      !playbackState.isPlaying || playbackState.progressMs < prev.progressMs;
+
+    if (!wasNearEnd || !stalledOrEnded) return;
 
     if (lastAutoAdvanceIdRef.current === playbackState.track.id) return;
     lastAutoAdvanceIdRef.current = playbackState.track.id;
-
     void playAdjacentTrack("next");
   }, [playbackState, filteredTracks, selectedTrack]);
 
