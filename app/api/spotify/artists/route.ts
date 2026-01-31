@@ -314,11 +314,14 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (error) {
     const message = (error as Error).message;
-    const status = message.includes("auth")
-      ? 401
-      : message.includes("credentials")
-        ? 400
-        : 500;
+    const status: 400 | 401 | 429 | 500 =
+      message.includes("auth")
+        ? 401
+        : message.includes("credentials")
+          ? 400
+          : message.includes("429")
+            ? 429
+            : 500;
     const res = NextResponse.json(
       {
         error: message,
