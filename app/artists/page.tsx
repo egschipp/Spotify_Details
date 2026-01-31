@@ -11,6 +11,7 @@ type TrackSummary = {
   album: { id: string; name: string; images: { url: string }[] };
   spotifyUrl: string | null;
   durationMs: number;
+  playlistNames: string[];
 };
 
 type ArtistOption = {
@@ -35,23 +36,12 @@ export default function ArtistsPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [tracks, setTracks] = useState<TrackSummary[]>([]);
+  const [artistOptions, setArtistOptions] = useState<ArtistOption[]>([]);
   const [artistId, setArtistId] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
-
-  const artists = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const track of tracks) {
-      for (const artist of track.artists) {
-        map.set(artist.id, artist.name);
-      }
-    }
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
-  }, [tracks]);
 
   const filteredTracks = useMemo(() => {
     if (!artistId) return [];
@@ -81,7 +71,7 @@ export default function ArtistsPage() {
     if (!authStatus.authenticated) return;
     setLoading(true);
     setErrorMessage(null);
-    fetch(withBasePath("/api/spotify/liked"), { method: "POST" })
+    fetch(withBasePath("/api/spotify/artists"), { method: "POST" })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
@@ -89,9 +79,10 @@ export default function ArtistsPage() {
             router.replace("/credentials");
             return;
           }
-          throw new Error(data.error ?? "Failed to fetch liked tracks.");
+          throw new Error(data.error ?? "Failed to fetch artist data.");
         }
         setTracks(data.tracks ?? []);
+        setArtistOptions(data.artists ?? []);
       })
       .catch((error) => setErrorMessage((error as Error).message))
       .finally(() => setLoading(false));
@@ -136,7 +127,7 @@ export default function ArtistsPage() {
                 Select an artist
               </h2>
               <p className="text-sm text-white/60">
-                Alphabetical list from your saved Spotify tracks.
+                Alphabetical list from all playlists and liked songs.
               </p>
             </div>
 
@@ -154,7 +145,7 @@ export default function ArtistsPage() {
                   {loading
                     ? "Loading artists..."
                     : artistId
-                      ? artists.find((artist) => artist.id === artistId)?.name ??
+                      ? artistOptions.find((artist) => artist.id === artistId)?.name ??
                         "Select an artist"
                       : "Select an artist"}
                 </span>
@@ -175,12 +166,12 @@ export default function ArtistsPage() {
                   aria-label="Artists"
                   className="absolute z-10 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-white/10 bg-black/90 p-2 shadow-card"
                 >
-                  {artists.length === 0 && (
+                  {artistOptions.length === 0 && (
                     <div className="px-3 py-2 text-sm text-white/60">
                       No artists available.
                     </div>
                   )}
-                  {artists.map((artist) => {
+                  {artistOptions.map((artist) => {
                     const isSelected = artist.id === artistId;
                     return (
                       <button
@@ -220,6 +211,7 @@ export default function ArtistsPage() {
                   ? `${filteredTracks.length} tracks`
                   : "Select an artist to view tracks"}
               </span>
+              {loading && <span>Loading library...</span>}
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-white/10 bg-black/70">
@@ -230,20 +222,21 @@ export default function ArtistsPage() {
                     <th scope="col" className="px-4 py-3">Track</th>
                     <th scope="col" className="px-4 py-3">Album</th>
                     <th scope="col" className="px-4 py-3">Duration</th>
+                    <th scope="col" className="px-4 py-3">Playlists</th>
                     <th scope="col" className="px-4 py-3">Spotify</th>
                   </tr>
                 </thead>
                 <tbody>
                   {!artistId && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-white/50">
                         Choose an artist to load tracks.
                       </td>
                     </tr>
                   )}
                   {artistId && filteredTracks.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-6 text-center text-sm text-white/50">
+                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-white/50">
                         No saved tracks found for this artist.
                       </td>
                     </tr>
@@ -254,6 +247,9 @@ export default function ArtistsPage() {
                       <td className="px-4 py-3 text-white/70">{track.album.name}</td>
                       <td className="px-4 py-3 text-white/60">
                         {formatDuration(track.durationMs)}
+                      </td>
+                      <td className="px-4 py-3 text-white/60">
+                        {track.playlistNames.join(", ")}
                       </td>
                       <td className="px-4 py-3">
                         {track.spotifyUrl ? (
