@@ -103,6 +103,7 @@ export default function ArtistsPage() {
   const playerInstanceRef = useRef<any>(null);
   const artistListRef = useRef<HTMLDivElement | null>(null);
   const artistAnchorRef = useRef<Record<string, HTMLButtonElement | null>>({});
+  const lastAutoAdvanceIdRef = useRef<string | null>(null);
   const [artistSearch, setArtistSearch] = useState("");
   const artistSearchRef = useRef<HTMLInputElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -201,6 +202,10 @@ export default function ArtistsPage() {
   }, [artistName, trackName, playlistId, selectMode]);
 
   useEffect(() => {
+    lastAutoAdvanceIdRef.current = null;
+  }, [selectedTrack?.id, selectMode]);
+
+  useEffect(() => {
     artistAnchorRef.current = {};
   }, [artistOptions, trackOptions, playlistOptions]);
 
@@ -258,6 +263,23 @@ export default function ArtistsPage() {
     }, 5000);
     return () => window.clearInterval(interval);
   }, [authStatus.authenticated, selectedDeviceId]);
+
+  useEffect(() => {
+    if (!playbackState?.track?.id || !selectedTrack) return;
+    if (playbackState.track.id !== selectedTrack.id) return;
+    if (playbackState.isPlaying) return;
+    if (filteredTracks.length < 2) return;
+    if (playbackState.durationMs === 0) return;
+
+    const nearEnd =
+      playbackState.progressMs >= playbackState.durationMs - 1500;
+    if (!nearEnd) return;
+
+    if (lastAutoAdvanceIdRef.current === playbackState.track.id) return;
+    lastAutoAdvanceIdRef.current = playbackState.track.id;
+
+    void playAdjacentTrack("next");
+  }, [playbackState, filteredTracks, selectedTrack]);
 
   useEffect(() => {
     if (!authStatus.authenticated) return;
@@ -458,6 +480,7 @@ export default function ArtistsPage() {
       if (!res.ok) {
         throw new Error(data.error ?? "Failed to start playback.");
       }
+      setSelectedTrack(track);
       await refreshPlaybackState();
     } catch (error) {
       setPlayerError((error as Error).message);
@@ -576,6 +599,23 @@ export default function ArtistsPage() {
     } catch (error) {
       setPlayerError((error as Error).message);
     }
+  }
+
+  function findTrackIndexById(trackId?: string | null) {
+    if (!trackId) return -1;
+    return filteredTracks.findIndex((track) => track.id === trackId);
+  }
+
+  async function playAdjacentTrack(direction: "next" | "previous") {
+    if (!filteredTracks.length) return;
+    const activeId = selectedTrack?.id ?? playbackState?.track?.id ?? null;
+    const currentIndex = findTrackIndexById(activeId);
+    if (currentIndex < 0) return;
+    const nextIndex =
+      direction === "next" ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0 || nextIndex >= filteredTracks.length) return;
+    const nextTrack = filteredTracks[nextIndex];
+    await playOnDevice(nextTrack);
   }
 
   function handleArtistSearch(value: string) {
@@ -976,6 +1016,20 @@ export default function ArtistsPage() {
                             className="rounded-full border border-white/15 bg-tide/80 px-4 py-1 text-xs font-semibold text-black transition hover:bg-tide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                           >
                             {playbackState?.isPlaying ? "Pause" : "Play"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => playAdjacentTrack("previous")}
+                            className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/80 transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                          >
+                            Prev
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => playAdjacentTrack("next")}
+                            className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white/80 transition hover:border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tide focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                          >
+                            Next
                           </button>
                         </div>
 
