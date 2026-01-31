@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
   const asyncMode = url.searchParams.get("async") === "1";
   const limit = rateLimit(`playlists:${sessionId}`, {
     windowMs: 60_000,
-    max: 30
+    max: 60
   });
   if (!limit.ok) {
     return NextResponse.json(

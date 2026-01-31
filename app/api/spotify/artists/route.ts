@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
   const asyncMode = url.searchParams.get("async") === "1";
   const limit = rateLimit(`artists:${sessionId}`, {
     windowMs: 60_000,
-    max: 4
+    max: 12
   });
   if (!limit.ok) {
     return NextResponse.json(
