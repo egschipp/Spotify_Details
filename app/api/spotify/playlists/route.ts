@@ -270,14 +270,27 @@ async function refreshPlaylistsCache(cacheKey: string, sessionId: string) {
       payload
     } as CacheEnvelope<any>);
     incCounter("refresh");
-  } catch {
+  } catch (error) {
+    const message = (error as Error).message;
+    const errorCode = message.includes("auth")
+      ? "auth_required"
+      : message.includes("credentials")
+        ? "credentials_missing"
+        : message.includes("429")
+          ? "rate_limit"
+          : "error";
+    if (errorCode === "auth_required") {
+      await clearSession(sessionId);
+    }
     const payload = {
       total: 0,
       playlists: [],
       updatedAt: new Date().toISOString(),
       cacheStatus: "stale",
       syncStatus: "error",
-      state: "error"
+      state: "error",
+      errorCode,
+      errorMessage: message
     };
     setMemoryCache(cacheKey, payload, PLAYLISTS_TTL_MS, {
       updatedAt: payload.updatedAt,
