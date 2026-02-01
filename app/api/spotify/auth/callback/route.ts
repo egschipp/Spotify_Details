@@ -133,10 +133,12 @@ export async function GET(req: NextRequest) {
       codeVerifier: oauthRecord.codeVerifier
     });
     const expiresAt = Date.now() + token.expires_in * 1000 - 30_000;
+    const sessionBefore = await getSession(sessionId);
+    const refreshToken = token.refresh_token ?? sessionBefore.refreshToken;
     // Persist tokens in the server session; keep cookies HttpOnly.
     await setSession(sessionId, {
       accessToken: token.access_token,
-      refreshToken: token.refresh_token,
+      refreshToken,
       expiresAt,
       codeVerifier: undefined,
       authState: undefined
