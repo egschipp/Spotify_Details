@@ -29,7 +29,7 @@ export default function BrandHeader({
     <header className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex h-[clamp(140px,20vw,250px)] w-[clamp(140px,20vw,250px)] items-center justify-center bg-transparent">
+          <div className="flex h-[clamp(280px,40vw,500px)] w-[clamp(280px,40vw,500px)] items-center justify-center bg-transparent">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={withBasePath("/brand-logo.png")}
