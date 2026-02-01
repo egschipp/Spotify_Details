@@ -48,6 +48,15 @@ async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    })
+  ]);
+}
+
 function getCacheKey(userId: string) {
   return `v${CACHE_VERSION}:${userId}:playlists:index`;
 }
@@ -286,7 +295,11 @@ async function buildPlaylistsPayload(sessionId: string) {
 
 async function refreshPlaylistsCache(cacheKey: string, sessionId: string) {
   try {
-    const payload = await buildPlaylistsPayload(sessionId);
+    const payload = await withTimeout(
+      buildPlaylistsPayload(sessionId),
+      PLAYLISTS_SYNC_TIMEOUT_MS,
+      "Spotify playlists refresh timed out."
+    );
     setMemoryCache(cacheKey, payload, PLAYLISTS_TTL_MS, {
       updatedAt: payload.updatedAt,
       state: "ok",
