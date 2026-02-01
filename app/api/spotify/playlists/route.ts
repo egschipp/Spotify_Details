@@ -34,6 +34,12 @@ const MAX_RETRIES = 3;
 const RETRY_FALLBACK_MS = 1500;
 const PLAYLISTS_TTL_MS = Number(process.env.SPOTIFY_PLAYLISTS_TTL_MS ?? 30 * 60 * 1000);
 const PLAYLISTS_SWR_MS = Number(process.env.SPOTIFY_PLAYLISTS_SWR_MS ?? 6 * 60 * 60 * 1000);
+const PLAYLISTS_REQUEST_TIMEOUT_MS = Number(
+  process.env.SPOTIFY_PLAYLISTS_REQUEST_TIMEOUT_MS ?? 15000
+);
+const PLAYLISTS_SYNC_TIMEOUT_MS = Number(
+  process.env.SPOTIFY_PLAYLISTS_SYNC_TIMEOUT_MS ?? 120000
+);
 const CACHE_VERSION = 1;
 
 async function sleep(ms: number) {
@@ -53,7 +59,14 @@ function getCacheState(ageMs: number) {
 async function spotifyFetchWithRetry(path: string, accessToken: string) {
   let attempt = 0;
   while (true) {
-    const response = await spotifyFetch(path, accessToken);
+    const response = await Promise.race([
+      spotifyFetch(path, accessToken),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Spotify playlists fetch timeout."));
+        }, PLAYLISTS_REQUEST_TIMEOUT_MS);
+      })
+    ]);
     if (response.status !== 429 || attempt >= MAX_RETRIES) {
       return response;
     }
@@ -71,8 +84,12 @@ async function fetchAllPlaylists(accessToken: string) {
   let offset = 0;
   const limit = 50;
   let next: string | null = null;
+  const startedAt = Date.now();
 
   do {
+    if (Date.now() - startedAt > PLAYLISTS_SYNC_TIMEOUT_MS) {
+      throw new Error("Spotify playlists sync timeout.");
+    }
     const response = await spotifyFetchWithRetry(
       `/me/playlists?limit=${limit}&offset=${offset}`,
       accessToken
