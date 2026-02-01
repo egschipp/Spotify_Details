@@ -5,6 +5,8 @@ import {
   acquireLock,
   CacheEnvelope,
   getMemoryCache,
+  getLockInfo,
+  isInflight,
   readDiskCache,
   releaseLock,
   setMemoryCache,
@@ -168,13 +170,18 @@ export async function GET(req: NextRequest) {
             await releaseLock(cacheKey);
           }
         });
+        const lockInfo = await getLockInfo(cacheKey);
         const res = NextResponse.json(
           {
             ...diskEnvelope.payload,
             cacheStatus: "stale",
             syncStatus: "syncing",
             state: "stale",
-            refreshStartedAt: new Date().toISOString()
+            refreshStartedAt: new Date().toISOString(),
+            debug: {
+              inflight: isInflight(cacheKey),
+              lock: lockInfo
+            }
           },
           {
             headers: {
@@ -199,6 +206,7 @@ export async function GET(req: NextRequest) {
           await releaseLock(cacheKey);
         }
       });
+      const lockInfo = await getLockInfo(cacheKey);
       const res = NextResponse.json(
         {
           total: 0,
@@ -207,7 +215,11 @@ export async function GET(req: NextRequest) {
           cacheStatus: "miss",
           syncStatus: "syncing",
           state: "refreshing",
-          refreshStartedAt: new Date().toISOString()
+          refreshStartedAt: new Date().toISOString(),
+          debug: {
+            inflight: isInflight(cacheKey),
+            lock: lockInfo
+          }
         },
         { headers: rateLimitHeaders(limit.remaining, limit.resetAt) }
       );

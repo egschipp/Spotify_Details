@@ -224,6 +224,35 @@ export async function releaseLock(cacheKey: string) {
   }
 }
 
+export function isInflight(cacheKey: string): boolean {
+  return inflight.has(cacheKey);
+}
+
+export async function getLockInfo(cacheKey: string): Promise<{
+  ownerId: string;
+  acquiredAt: number;
+  expiresAt: number;
+} | null> {
+  try {
+    const raw = await fs.readFile(getLockPath(cacheKey), "utf8");
+    const lock = JSON.parse(raw) as {
+      ownerId?: string;
+      acquiredAt?: number;
+      expiresAt?: number;
+    };
+    if (!lock.ownerId || !lock.acquiredAt || !lock.expiresAt) {
+      return null;
+    }
+    return {
+      ownerId: lock.ownerId,
+      acquiredAt: lock.acquiredAt,
+      expiresAt: lock.expiresAt
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function singleFlight(cacheKey: string, fn: () => Promise<void>) {
   if (inflight.has(cacheKey)) {
     return inflight.get(cacheKey);
